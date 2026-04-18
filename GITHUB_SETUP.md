@@ -68,7 +68,7 @@ DeepSeek 不可用时自动切换。如不需要备用可不填。
 
 #### Secret 2 & 3：Gmail 发信配置
 
-用于发送每日邮件摘要到 planetbin2012@gmail.com。
+用于发送每日邮件摘要到 xxx@gmail.com。
 
 **需要一个 Gmail 账号作为发件人（可以是你自己的 Gmail）。**
 
