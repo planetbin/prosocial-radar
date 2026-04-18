@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Scheduler daemon logs and PID
+logs/
+
+# Temp files
+tmp/
+*.tmp
+
+# Output files are committed via Actions, not by accident locally
+# (comment out the next two lines if you want local outputs tracked)
+# outputs/
+# data/
