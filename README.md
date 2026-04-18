@@ -86,8 +86,8 @@ python scheduler.py              # 每天 08:00 自动运行
 编辑 `prosocial_radar/push.py`：
 ```python
 RECIPIENTS = [
-    "planetbin2012@gmail.com",
-    "duo12.li@connect.polyu.hk",
+    "xxx@gmail.com",
+    "xxx@xx.com",
     # 添加更多邮箱...
 ]
 ```
