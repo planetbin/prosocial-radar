@@ -20,7 +20,7 @@ from typing import Dict, List
 log = logging.getLogger(__name__)
 
 RECIPIENTS = [
-    "planetbin2012@gmail.com",
+    "493210367@qq.com",
     "duo12.li@connect.polyu.hk",
 ]
 
