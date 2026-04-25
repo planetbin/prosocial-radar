@@ -2,10 +2,10 @@
 Relevance scoring module.
 
 Computes a relevance_score (0–100) for each paper based on:
-  - Keyword hits in title (weighted x3) and abstract (x1)
-  - Citation bonus (log-scaled, up to 30 pts)
-  - Recency bonus (papers ≤2 years old, up to 10 pts)
-  - Topic breadth bonus (multiple tags hit, up to 10 pts)
+  - Keyword hits in title (weighted x3) and abstract (x1)  → up to 40 pts
+  - Citation bonus (log-scaled)                            → up to 25 pts
+  - Recency bonus (papers ≤3 years old, heavily weighted)  → up to 25 pts
+  - Topic breadth bonus (multiple tags hit)                → up to 10 pts
 """
 
 import math
@@ -63,25 +63,27 @@ def _keyword_score(paper: Dict) -> float:
 
 
 def _citation_bonus(paper: Dict) -> float:
-    """Log-scaled citation bonus, max 30 pts."""
+    """Log-scaled citation bonus, max 25 pts."""
     c = paper.get("citation_count")
     if not c or c <= 0:
         return 0.0
-    # log10(10)=1 → 6 pts, log10(100)=2 → 12 pts, log10(1000)=3 → 18 pts, cap 30
-    return min(math.log10(c + 1) * 6.0, 30.0)
+    # log10(10)=1 → 5 pts, log10(100)=2 → 10 pts, log10(1000)=3 → 15 pts, cap 25
+    return min(math.log10(c + 1) * 5.0, 25.0)
 
 
 def _recency_bonus(paper: Dict) -> float:
-    """Bonus for papers published ≤2 years ago, max 10 pts."""
+    """Bonus for papers published ≤3 years ago, max 25 pts (heavily weighted)."""
     try:
         year = int(str(paper.get("year", "") or "")[:4])
         age  = CURRENT_YEAR - year
         if age <= 0:
-            return 10.0
+            return 25.0   # current year
         if age <= 1:
-            return 8.0
+            return 20.0   # last year
         if age <= 2:
-            return 5.0
+            return 12.0   # 2 years ago
+        if age <= 3:
+            return 5.0    # 3 years ago
         return 0.0
     except (ValueError, TypeError):
         return 0.0
@@ -100,8 +102,8 @@ def score_paper(paper: Dict) -> float:
     rec  = _recency_bonus(paper)
     br   = _breadth_bonus(paper)
 
-    # Keyword score normalised to max ~50 pts (assume ceiling ≈ raw 40)
-    kw_norm = min(kw / 40.0 * 50.0, 50.0)
+    # Keyword score normalised to max ~40 pts (assume ceiling ≈ raw 40)
+    kw_norm = min(kw / 40.0 * 40.0, 40.0)
 
     raw   = kw_norm + cit + rec + br
     final = min(round(raw, 1), 100.0)

@@ -13,6 +13,8 @@ FETCH_BATCH   = 100
 MAX_RESULTS   = 200
 # "Latest" channel: only papers published within this many days
 RECENT_DAYS   = 90
+# All channels: only fetch papers published within this many days (3 years)
+MAX_AGE_DAYS  = 1095
 # Pause between requests (seconds) — NCBI policy: ≤3 req/s without API key
 REQUEST_DELAY = 0.5
 

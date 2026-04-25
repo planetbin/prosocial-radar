@@ -18,7 +18,7 @@ import requests
 from .config import (
     PUBMED_SEARCH, PUBMED_FETCH,
     PUBMED_QUERY, MAX_RESULTS, FETCH_BATCH, REQUEST_DELAY,
-    RECENT_DAYS,
+    RECENT_DAYS, MAX_AGE_DAYS,
 )
 
 log = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def _search_pmids(sort: str, retmax: int = MAX_RESULTS,
 
     recent_only=True  → restrict to papers published within RECENT_DAYS days
                         (used for the pub+date channel to guarantee daily freshness)
-    recent_only=False → no date restriction (used for relevance channel)
+    recent_only=False → restrict to papers published within MAX_AGE_DAYS days (3 years)
     """
     params = {
         "db":      "pubmed",
@@ -41,18 +41,17 @@ def _search_pmids(sort: str, retmax: int = MAX_RESULTS,
         "retmax":  retmax,
         "retmode": "json",
         "sort":    sort,
+        "reldate": RECENT_DAYS if recent_only else MAX_AGE_DAYS,
+        "datetype": "pdat",
     }
-    if recent_only:
-        params["reldate"]  = RECENT_DAYS
-        params["datetype"] = "pdat"
 
     try:
         r = requests.get(PUBMED_SEARCH, params=params, timeout=30)
         r.raise_for_status()
         data = r.json()
         pmids = data.get("esearchresult", {}).get("idlist", [])
-        label = f"sort={sort},reldate={RECENT_DAYS}d" if recent_only else f"sort={sort}"
-        log.info("PubMed [%s] → %d PMIDs found", label, len(pmids))
+        days  = RECENT_DAYS if recent_only else MAX_AGE_DAYS
+        log.info("PubMed [sort=%s,reldate=%dd] → %d PMIDs found", sort, days, len(pmids))
         return pmids
     except Exception as exc:
         log.error("PubMed search failed (sort=%s): %s", sort, exc)
