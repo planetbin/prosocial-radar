@@ -27,15 +27,26 @@ CSV_FIELDS = [
     "selection_status",
     "filter_decision",
     "filter_reason",
+    "topic_tier",
+    "topic_reason",
+    "matched_core_terms",
+    "matched_paradigm_terms",
+    "matched_mechanism_terms",
+    "matched_context_terms",
+    "matched_soft_exclude_terms",
+    "matched_hard_exclude_terms",
     "matched_tier_a",
     "matched_tier_b",
     "matched_tags",
     "relevance_score",
+    "score_topic",
     "score_keyword",
     "score_keyword_raw",
     "score_citation",
     "score_recency",
     "score_breadth",
+    "score_quality",
+    "score_penalty",
     "score_breakdown",
     "selection_reason",
     "feedback_rating",
@@ -116,8 +127,9 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         cites = p.get("citation_count")
         cites_s = str(cites) if cites is not None else "-"
         tags = p.get("topic_tags", "")
+        tier = p.get("topic_tier", "")
         status = p.get("selection_status", "")
-        reason = (p.get("selection_reason") or p.get("filter_reason") or "")[:120]
+        reason = (p.get("selection_reason") or p.get("filter_reason") or "")[:140]
         authors = (p.get("authors") or "")[:100]
         affiliation = (p.get("first_author_affiliation") or p.get("affiliations") or "")[:120]
         print(f"\n[{i:>3}] {paper_title}")
@@ -126,7 +138,10 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
             print(f"       authors: {authors}")
         if affiliation:
             print(f"       affiliation: {affiliation}")
-        print(f"       tags: {tags}")
+        if tier:
+            print(f"       tier: {tier} | tags: {tags}")
+        else:
+            print(f"       tags: {tags}")
         if reason:
             print(f"       why: {reason}")
     if len(papers) > 20:
