@@ -4,9 +4,10 @@ Daily research radar for prosocial behavior papers. It searches PubMed, enriches
 
 ## What It Does
 
-- Searches PubMed with a configurable research profile.
+- Searches PubMed with a configurable research profile and retry/backoff handling for API rate limits.
 - Enriches DOI-matched papers with OpenAlex citation counts.
 - Filters papers with profile-driven topic and method/context keywords.
+- Applies topic-scope screening so broad medical or biological uses of terms like `cooperation` do not pass without a human social-behavior context.
 - Applies evidence-tier screening so low-value publication types are filtered before AI summarization.
 - Preserves author and affiliation metadata from PubMed records.
 - Explains why each candidate passed or was filtered out.
@@ -57,6 +58,7 @@ pip install -r requirements.txt
 The default profile is `profiles/default.yml`. It controls:
 
 - PubMed query and date windows
+- PubMed fetch batch size, retry count, and retry backoff
 - OpenAlex polite-pool email
 - email recipients
 - target journals for high-quality badges
@@ -86,6 +88,10 @@ export GMAIL_ADDRESS="you@gmail.com"
 export GMAIL_APP_PASSWORD="xxxxxxxxxxxxxxxx"
 export RADAR_RECIPIENTS="name@example.com,other@example.com"
 export OPENALEX_EMAIL="you@example.com"
+export NCBI_API_KEY="optional-ncbi-api-key"
+export PUBMED_FETCH_BATCH="50"
+export PUBMED_MAX_RETRIES="4"
+export PUBMED_BACKOFF_SECONDS="2.0"
 ```
 
 ## Run
@@ -123,6 +129,11 @@ Bibliographic metadata fields include:
 - `affiliations`
 - `publication_types`
 
+Topic-scope fields include:
+
+- `topic_scope_decision`
+- `topic_scope_reason`
+
 Evidence-tier fields include:
 
 - `evidence_level`
@@ -133,7 +144,7 @@ Evidence-tier fields include:
 
 Evidence-tier screening keeps higher-value literature review inputs and filters low-screening-value records:
 
-- `L1 evidence synthesis`: meta-analysis, systematic review, umbrella/scoping review, review
+- `L1 evidence synthesis`: meta-analysis, systematic review, umbrella/scoping review, review; retained but no longer given the strongest score boost
 - `L2 causal/experimental`: randomized, controlled trial, experiment, intervention, causal inference
 - `L3 longitudinal/cohort`: longitudinal, cohort, prospective, follow-up, panel designs
 - `L4 human empirical`: survey, behavioral task, reported sample, human neuroscience measure
@@ -169,7 +180,7 @@ Structured AI fields include:
 - `ai_why_it_matters`
 - `ai_bibtex_keywords`
 
-The run report records counts for each stage: PMIDs found, details fetched, unique candidates, filtered-out candidates, after-filter candidates, evidence-tier counts, new papers, summary attempts, successful summaries, feedback sync, email status, and output paths.
+The run report records counts for each stage: PMIDs found, details fetched, details missing after retries, unique candidates, topic-scope counts, filtered-out candidates, after-filter candidates, evidence-tier counts, new papers, summary attempts, successful summaries, feedback sync, email status, and output paths.
 
 ## Email Digest
 
@@ -209,6 +220,7 @@ The workflow at `.github/workflows/daily_radar.yml` runs daily at UTC 00:00, whi
 - `GMAIL_ADDRESS`
 - `GMAIL_APP_PASSWORD`
 - optional: `ANTHROPIC_API_KEY`
+- optional: `NCBI_API_KEY` to raise PubMed API rate limits
 
 The workflow permissions include:
 
