@@ -75,6 +75,18 @@ PAPER_SUMMARY_DEFAULTS = {
     "ai_bibtex_keywords": "",
 }
 
+METHOD_ALIASES = {
+    "behavioral": "behavioral",
+    "behavioural": "behavioral",
+    "fmri": "fMRI",
+    "functional mri": "fMRI",
+    "eeg": "EEG",
+    "computational": "computational",
+    "review": "review",
+    "mixed": "mixed",
+    "other": "other",
+}
+
 SYSTEM_PROMPT = """You are a scientific assistant specialising in psychology and neuroscience.
 Given a paper title and abstract, respond ONLY with a JSON object and no markdown fences.
 Use exactly these keys:
@@ -120,8 +132,7 @@ def _normalise_result(data: Dict) -> Dict:
         result["main_result"] = result["finding"]
     if not result["finding"] and result["main_result"]:
         result["finding"] = result["main_result"][:120]
-    if result["method"] not in {"behavioral", "fMRI", "EEG", "computational", "review", "mixed", "other"}:
-        result["method"] = "other"
+    result["method"] = METHOD_ALIASES.get(result["method"].strip().lower(), "other")
     return result
 
 
