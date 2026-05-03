@@ -43,15 +43,6 @@ TAG_COLORS = {
     "moral": "#65a30d",
 }
 
-EVIDENCE_COLORS = {
-    "l1": "#7c3aed",
-    "l2": "#047857",
-    "l3": "#2563eb",
-    "l4": "#0f766e",
-    "l5": "#b45309",
-    "l6": "#991b1b",
-}
-
 FEEDBACK_BUTTONS = [
     ("must_read", "Must read", "#166534", "#dcfce7"),
     ("useful", "Useful", "#1d4ed8", "#dbeafe"),
@@ -73,12 +64,6 @@ def _method_badge(method: str) -> str:
     key = (method or "other").lower()
     color = METHOD_COLORS.get(key, METHOD_COLORS["other"])
     return _badge(method or "other", color)
-
-
-def _evidence_badge(level: str) -> str:
-    key = (level or "").split()[0].lower()
-    color = EVIDENCE_COLORS.get(key, "#6b7280")
-    return _badge(level or "evidence", color)
 
 
 def _tag_badges(tags_str: str) -> str:
@@ -141,9 +126,6 @@ def _paper_card(rank: int, p: Dict) -> str:
     ai_method = p.get("ai_method", "")
     authors = p.get("authors", "")
     institution = _shorten(p.get("first_author_affiliation") or p.get("affiliations") or "")
-    evidence_level = p.get("evidence_level", "")
-    evidence_reason = _shorten(p.get("evidence_reason", ""), limit=220)
-    evidence_detail = f"{evidence_level} - {evidence_reason}" if evidence_reason else evidence_level
 
     cite_str = f"{citations:,}" if citations and citations > 0 else "-"
     score_str = f"{score:.0f}" if isinstance(score, (int, float)) else "-"
@@ -188,7 +170,6 @@ def _paper_card(rank: int, p: Dict) -> str:
         if explanation_html else ""
     )
     method_html = _method_badge(ai_method) if ai_method else ""
-    evidence_html = _evidence_badge(evidence_level) if evidence_level else ""
 
     return (
         f'<div style="margin:0 0 20px;padding:18px 20px;background:#fff;'
@@ -204,8 +185,7 @@ def _paper_card(rank: int, p: Dict) -> str:
         f'<p style="margin:0 0 8px;font-size:12px;color:#64748b;">{journal} &nbsp;&middot;&nbsp; {year}</p>'
         f'{_detail("Authors", authors)}'
         f'{_detail("Institution", institution)}'
-        f'{_detail("Evidence", evidence_detail)}'
-        f'<div style="margin-bottom:8px;">{method_html}{evidence_html}{_tag_badges(tags)}</div>'
+        f'<div style="margin-bottom:8px;">{method_html}{_tag_badges(tags)}</div>'
         f'{explanation_block}'
         f'{ai_block}'
         f'<div style="margin-top:12px;">{link_html}</div>'
