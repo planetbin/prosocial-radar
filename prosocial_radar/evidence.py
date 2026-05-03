@@ -34,7 +34,7 @@ EVIDENCE_RULES = [
     {
         "type": "evidence_synthesis",
         "level": "L1 evidence synthesis",
-        "score": 12.0,
+        "score": 5.0,
         "signals": [
             (r"\bmeta-analysis\b|\bmeta analysis\b", "meta-analysis"),
             (r"\bsystematic review\b", "systematic review"),
