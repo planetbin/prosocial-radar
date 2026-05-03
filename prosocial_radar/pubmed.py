@@ -67,6 +67,27 @@ def _text(elem, path: str, default: str = "") -> str:
     return (node.text or "").strip() if node is not None else default
 
 
+def _unique(values: List[str], limit: int | None = None) -> List[str]:
+    seen, result = set(), []
+    for value in values:
+        text = " ".join((value or "").split())
+        key = text.lower()
+        if text and key not in seen:
+            seen.add(key)
+            result.append(text)
+            if limit and len(result) >= limit:
+                break
+    return result
+
+
+def _parse_affiliations(author) -> List[str]:
+    affiliations = []
+    for node in author.findall(".//AffiliationInfo/Affiliation"):
+        if node.text:
+            affiliations.append(node.text)
+    return _unique(affiliations)
+
+
 def _parse_article(article_elem) -> Dict:
     """Extract fields from a <PubmedArticle> XML element."""
     medline = article_elem.find(".//MedlineCitation")
@@ -82,15 +103,28 @@ def _parse_article(article_elem) -> Dict:
     abstract = " ".join((n.text or "").strip() for n in art.findall(".//AbstractText"))
 
     authors = []
-    for author in art.findall(".//Author"):
+    all_affiliations = []
+    first_author_affiliations = []
+    for idx, author in enumerate(art.findall(".//Author")):
         last = _text(author, "LastName")
         fore = _text(author, "ForeName")
         name = f"{last} {fore}".strip() if last else _text(author, "CollectiveName")
         if name:
             authors.append(name)
+
+        author_affiliations = _parse_affiliations(author)
+        all_affiliations.extend(author_affiliations)
+        if idx == 0:
+            first_author_affiliations = author_affiliations
+
     authors_str = "; ".join(authors[:6])
     if len(authors) > 6:
         authors_str += " et al."
+
+    affiliations = _unique(all_affiliations, limit=8)
+    affiliations_str = "; ".join(affiliations)
+    if len(_unique(all_affiliations)) > len(affiliations):
+        affiliations_str += "; et al."
 
     journal = _text(art, "Journal/Title") or _text(art, "Journal/ISOAbbreviation")
     year = _text(art, "Journal/JournalIssue/PubDate/Year") or _text(
@@ -123,6 +157,10 @@ def _parse_article(article_elem) -> Dict:
         "title": title,
         "abstract": abstract,
         "authors": authors_str,
+        "first_author": authors[0] if authors else "",
+        "last_author": authors[-1] if authors else "",
+        "first_author_affiliation": "; ".join(first_author_affiliations),
+        "affiliations": affiliations_str,
         "year": year,
         "journal": journal,
         "doi": doi,
