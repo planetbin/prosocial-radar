@@ -64,14 +64,6 @@ def _new_identity(paper):
     return paper.get("pmid") or (paper.get("doi") or "").lower().strip()
 
 
-def _count_values(papers, field: str) -> dict:
-    counts = {}
-    for paper in papers:
-        value = str(paper.get(field) or "unknown")
-        counts[value] = counts.get(value, 0) + 1
-    return dict(sorted(counts.items(), key=lambda item: item[0]))
-
-
 def _init_report(args) -> dict:
     return {
         "started_at_utc": _utc_now(),
@@ -91,8 +83,6 @@ def _init_report(args) -> dict:
             "no_push": args.no_push,
         },
         "stages": {},
-        "topic_scope": {},
-        "evidence": {},
         "summaries": {},
         "outputs": {},
         "email": {},
@@ -135,7 +125,6 @@ def _set_unscored_defaults(papers):
         p.setdefault("score_citation", None)
         p.setdefault("score_recency", None)
         p.setdefault("score_breadth", None)
-        p.setdefault("score_evidence", None)
         p.setdefault("score_breakdown", "")
         p.setdefault("selection_reason", p.get("filter_reason", ""))
 
@@ -178,17 +167,6 @@ def main():
 
     before_filter = len(papers)
     candidate_audit = build_filter_audit(papers)
-    report["topic_scope"] = {
-        "decisions": _count_values(candidate_audit, "topic_scope_decision"),
-        "passed": sum(1 for p in candidate_audit if p.get("topic_scope_decision") == "passed"),
-        "filtered_out": sum(1 for p in candidate_audit if p.get("topic_scope_decision") == "filtered_out"),
-    }
-    report["evidence"] = {
-        "levels": _count_values(candidate_audit, "evidence_level"),
-        "types": _count_values(candidate_audit, "evidence_type"),
-        "passed": sum(1 for p in candidate_audit if p.get("evidence_decision") == "passed"),
-        "filtered_out": sum(1 for p in candidate_audit if p.get("evidence_decision") == "filtered_out"),
-    }
     if args.no_filter:
         for p in candidate_audit:
             audit_reason = p.get("filter_reason", "")
