@@ -67,23 +67,16 @@ jobs:
           except FileNotFoundError:
               lines = []
 
-          def clean(text, limit=138):
+          def compact(text, limit=80):
               text = " ".join(str(text or "").split())
               return text[:limit]
 
-          def status(context, description, state="success"):
-              payload = {"state": state, "context": context, "description": clean(description)}
+          def status(context, description="ok", state="success"):
+              payload = {"state": state, "context": context[:250], "description": compact(description, 130)}
               response = requests.post(url, headers=headers, json=payload, timeout=20)
               response.raise_for_status()
 
-          metrics = {
-              "pmids": "?",
-              "details": "?",
-              "unique": "?",
-              "passed": "?",
-              "filtered": "?",
-              "new": "?",
-          }
+          metrics = {"pmids": "?", "details": "?", "unique": "?", "passed": "?", "filtered": "?", "new": "?"}
           for line in lines:
               if m := re.search(r"Total unique PMIDs after merge: (\d+)", line):
                   metrics["pmids"] = m.group(1)
@@ -128,14 +121,16 @@ jobs:
               items.append(current)
 
           status(
-              "radar-preview/meta",
-              f"pmids {metrics['pmids']}; details {metrics['details']}; passed {metrics['passed']}; filtered {metrics['filtered']}; new {metrics['new']}; no-push",
+              f"radar-preview/meta pmids={metrics['pmids']} details={metrics['details']} passed={metrics['passed']} filtered={metrics['filtered']} new={metrics['new']} no-push",
+              "preview summary",
           )
           if not items:
-              status("radar-preview/error", "preview log did not contain ranked papers", "failure")
+              status("radar-preview/error no-ranked-papers", "preview log did not contain ranked papers", "failure")
           for item in items[:20]:
               rank = item["rank"]
               score = scores.get(rank, "?")
-              status(f"radar-preview/{rank:02d}", f"{score} | {item.get('title', '')}")
-              status(f"radar-preview/{rank:02d}-meta", f"{item.get('journal', '')} | tags: {item.get('tags', '')}")
+              title = compact(item.get("title", ""), 92)
+              meta = compact((item.get("journal", "") + " | tags: " + item.get("tags", "")), 140)
+              status(f"radar-preview/{rank:02d} score={score} title={title}", "rank title")
+              status(f"radar-preview/{rank:02d}-meta {meta}", "rank metadata")
           PY
