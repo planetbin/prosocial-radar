@@ -12,9 +12,9 @@ Daily research radar for prosocial behavior papers. It searches PubMed, enriches
 - Applies GitHub-native human feedback from labelled issues.
 - Removes papers already sent in previous digests.
 - Produces structured AI extraction fields for literature review work.
-- Saves compact durable outputs for new papers, Markdown digest, run report, history, and feedback.
+- Saves compact durable outputs for new papers, run report, history, and feedback.
 - Uploads full candidate audits as GitHub Actions artifacts instead of committing large audit files.
-- Sends an HTML email digest that includes paper cards, feedback buttons, and a Markdown literature brief.
+- Sends an HTML email digest with paper cards, AI fields, selection reasons, and feedback buttons.
 
 ## Project Structure
 
@@ -30,7 +30,6 @@ Daily research radar for prosocial behavior papers. It searches PubMed, enriches
 │   ├── filter.py                   # dedup + profile-driven relevance filtering + filter audit
 │   ├── scorer.py                   # relevance scoring and score explanations
 │   ├── feedback.py                 # GitHub issue feedback sync and score adjustment
-│   ├── digest.py                   # Markdown literature digest generation
 │   ├── history.py                  # sent-history deduplication
 │   ├── summarizer.py               # structured AI extraction
 │   ├── push.py                     # email rendering and delivery
@@ -97,11 +96,10 @@ python run_radar.py --max 100
 
 ## Outputs
 
-Each run writes files under `outputs/`:
+Each run writes compact durable files under `outputs/`:
 
 - `new_papers_YYYYMMDD.csv`
 - `new_papers_YYYYMMDD.json`
-- `digest_YYYYMMDD.md`
 - `run_report_YYYYMMDD.json`
 
 The workflow also creates full audit files during the run:
@@ -151,9 +149,6 @@ The email contains:
 - structured AI summary fields when available
 - `Why selected` explanations from filter and score fields
 - four feedback buttons: `Must read`, `Useful`, `Maybe`, `Ignore`
-- a visible `Markdown Literature Brief` block that mirrors `outputs/digest_YYYYMMDD.md`
-
-The Markdown block is included directly in the email so it can be pasted into notes, Zotero notes, Obsidian, Notion, or a literature review draft.
 
 ## Human Feedback Loop
 
@@ -164,9 +159,13 @@ The first feedback loop is GitHub-native:
 3. Submit the issue as-is, or add notes under `Notes:`.
 4. The next scheduled/manual Action reads labelled feedback issues using `GITHUB_TOKEN`.
 5. The workflow syncs them into `data/feedback.json`.
-6. Future runs adjust scores:
-   - exact `must_read`, `useful`, `maybe`, and `ignore` feedback changes that paper's score strongly
-   - similar journal/tag patterns provide smaller positive or negative nudges
+6. Future runs adjust scores before the history filter removes already-sent papers.
+
+Because sent papers are deduplicated by `data/sent_history.json`, feedback on an already-pushed paper usually will not make that exact paper appear again. Its main effect is to teach the ranking model what kinds of future papers are related to your preference:
+
+- exact `must_read`, `useful`, `maybe`, and `ignore` feedback is stored for audit and for cases where history is reset or identifiers differ
+- similar journal and topic-tag patterns provide smaller positive or negative nudges to new candidate papers
+- `selection_reason` and `feedback_reason` explain any feedback-based score movement
 
 No external database is required. Feedback remains versioned in GitHub and can be reverted with normal git history.
 
@@ -190,7 +189,6 @@ After each successful run, the workflow commits only compact durable files:
 - `data/feedback.json`
 - `outputs/new_papers_*.csv`
 - `outputs/new_papers_*.json`
-- `outputs/digest_*.md`
 - `outputs/run_report_*.json`
 
 See `GITHUB_SETUP.md` for step-by-step deployment notes.
