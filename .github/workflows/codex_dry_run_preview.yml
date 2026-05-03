@@ -1,0 +1,141 @@
+name: Prosocial Radar Dry Run Preview
+
+on:
+  push:
+    branches:
+      - codex/dry-run-ranking-20260503-2112
+
+concurrency:
+  group: radar-dry-run-preview
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      issues: read
+      statuses: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ranking preview only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+        run: |
+          set -o pipefail
+          python run_radar.py --top 20 --no-ai --no-push | tee preview.log
+
+      - name: Publish preview statuses
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import requests
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          sha = os.environ["GITHUB_SHA"]
+          token = os.environ["GITHUB_TOKEN"]
+          url = f"https://api.github.com/repos/{repo}/statuses/{sha}"
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+
+          try:
+              lines = open("preview.log", encoding="utf-8").read().splitlines()
+          except FileNotFoundError:
+              lines = []
+
+          def clean(text, limit=138):
+              text = " ".join(str(text or "").split())
+              return text[:limit]
+
+          def status(context, description, state="success"):
+              payload = {"state": state, "context": context, "description": clean(description)}
+              response = requests.post(url, headers=headers, json=payload, timeout=20)
+              response.raise_for_status()
+
+          metrics = {
+              "pmids": "?",
+              "details": "?",
+              "unique": "?",
+              "passed": "?",
+              "filtered": "?",
+              "new": "?",
+          }
+          for line in lines:
+              if m := re.search(r"Total unique PMIDs after merge: (\d+)", line):
+                  metrics["pmids"] = m.group(1)
+              if m := re.search(r"Fetched details for (\d+) papers", line):
+                  metrics["details"] = m.group(1)
+              if m := re.search(r"Filter audit: (\d+) unique papers, (\d+) passed, (\d+) filtered out", line):
+                  metrics["unique"], metrics["passed"], metrics["filtered"] = m.groups()
+              if m := re.search(r"History filter: \d+ total .* (\d+) new", line):
+                  metrics["new"] = m.group(1)
+
+          scores = {}
+          for line in lines:
+              if m := re.search(r"\[(\d+)\]\s+([0-9.]+) pts \| (.*)", line):
+                  scores[int(m.group(1))] = m.group(2)
+
+          items = []
+          current = None
+          for raw in lines:
+              line = raw.rstrip()
+              m = re.match(r"\[\s*(\d+)\]\s+(.*)", line)
+              if m:
+                  if current:
+                      items.append(current)
+                  current = {"rank": int(m.group(1)), "title": m.group(2).strip()}
+                  continue
+              if not current:
+                  continue
+              s = line.strip()
+              if not s:
+                  continue
+              if s.startswith("authors:"):
+                  current["authors"] = s[len("authors:"):].strip()
+              elif s.startswith("affiliation:"):
+                  current["affiliation"] = s[len("affiliation:"):].strip()
+              elif s.startswith("tags:"):
+                  current["tags"] = s[len("tags:"):].strip()
+              elif s.startswith("why:"):
+                  current["why"] = s[len("why:"):].strip()
+              elif " | citations: " in s:
+                  current["journal"] = s
+          if current:
+              items.append(current)
+
+          status(
+              "radar-preview/meta",
+              f"pmids {metrics['pmids']}; details {metrics['details']}; passed {metrics['passed']}; filtered {metrics['filtered']}; new {metrics['new']}; no-push",
+          )
+          if not items:
+              status("radar-preview/error", "preview log did not contain ranked papers", "failure")
+          for item in items[:20]:
+              rank = item["rank"]
+              score = scores.get(rank, "?")
+              status(f"radar-preview/{rank:02d}", f"{score} | {item.get('title', '')}")
+              status(f"radar-preview/{rank:02d}-meta", f"{item.get('journal', '')} | tags: {item.get('tags', '')}")
+          PY
