@@ -10,7 +10,7 @@ Pipeline:
 import argparse
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from prosocial_radar import config
@@ -54,6 +54,10 @@ def _path(path: Path | None) -> str:
     return str(path) if path else ""
 
 
+def _run_report_path(out_dir: Path) -> Path:
+    return out_dir / f"run_report_{date.today().strftime('%Y%m%d')}.json"
+
+
 def _new_identity(paper):
     return paper.get("pmid") or (paper.get("doi") or "").lower().strip()
 
@@ -87,6 +91,7 @@ def _init_report(args) -> dict:
 def _finish_report(report: dict, out_dir: Path, status: str, error: str | None = None) -> Path:
     report["status"] = status
     report["finished_at_utc"] = _utc_now()
+    report.setdefault("outputs", {})["run_report_json"] = _path(_run_report_path(out_dir))
     if error:
         report.setdefault("errors", []).append(error)
     return save_run_report(report, out_dir)
@@ -209,7 +214,6 @@ def main():
             log.info("  [%d] %.1f pts | %s", i, p.get("relevance_score", 0), p.get("title", "")[:70])
 
     report_path = _finish_report(report, out_dir, "ok")
-    report["outputs"]["run_report_json"] = _path(report_path)
     log.info("Run report -> %s", report_path)
     log.info("=== Done ===")
 
