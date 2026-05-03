@@ -7,6 +7,7 @@ Daily research radar for prosocial behavior papers. It searches PubMed, enriches
 - Searches PubMed with a configurable research profile.
 - Enriches DOI-matched papers with OpenAlex citation counts.
 - Filters papers with profile-driven topic and method/context keywords.
+- Preserves author and affiliation metadata from PubMed records.
 - Explains why each candidate passed or was filtered out.
 - Scores papers by relevance, recency, citations, and topic breadth, with a score breakdown.
 - Applies GitHub-native human feedback from labelled issues.
@@ -14,7 +15,7 @@ Daily research radar for prosocial behavior papers. It searches PubMed, enriches
 - Produces structured AI extraction fields for literature review work.
 - Saves compact durable outputs for new papers, run report, history, and feedback.
 - Uploads full candidate audits as GitHub Actions artifacts instead of committing large audit files.
-- Sends an HTML email digest with paper cards, AI fields, selection reasons, and feedback buttons.
+- Sends an HTML email digest with paper cards, author/institution lines, AI fields, selection reasons, and feedback buttons.
 
 ## Project Structure
 
@@ -111,6 +112,14 @@ Those full audit files are uploaded as a GitHub Actions artifact named `all-cand
 
 `new_papers` contains only papers not already recorded in `data/sent_history.json`. The full candidate audit contains both retained and filtered-out papers.
 
+Bibliographic metadata fields include:
+
+- `authors`
+- `first_author`
+- `last_author`
+- `first_author_affiliation`
+- `affiliations`
+
 Audit and explanation fields include:
 
 - `filter_decision`
@@ -146,6 +155,7 @@ The run report records counts for each stage: PMIDs found, details fetched, uniq
 The email contains:
 
 - ranked paper cards
+- authors and first-author institution/affiliation when PubMed provides them
 - structured AI summary fields when available
 - `Why selected` explanations from filter and score fields
 - four feedback buttons: `Must read`, `Useful`, `Maybe`, `Ignore`
