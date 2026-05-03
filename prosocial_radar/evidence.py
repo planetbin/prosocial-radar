@@ -138,16 +138,16 @@ def classify_evidence(paper: Dict) -> Dict:
             -25.0,
         )
 
-    for rule in EVIDENCE_RULES:
-        matches = _matched(rule["signals"], body_text)
-        if matches:
-            return _result(
-                rule["level"],
-                rule["type"],
-                "passed",
-                "matched evidence signal: " + ", ".join(matches[:4]),
-                float(rule["score"]),
-            )
+    synthesis_rule = EVIDENCE_RULES[0]
+    synthesis_matches = _matched(synthesis_rule["signals"], title_and_type)
+    if synthesis_matches:
+        return _result(
+            synthesis_rule["level"],
+            synthesis_rule["type"],
+            "passed",
+            "matched evidence signal: " + ", ".join(synthesis_matches[:4]),
+            float(synthesis_rule["score"]),
+        )
 
     nonhuman = _matched(NONHUMAN_SIGNALS, body_text)
     human = _matched(HUMAN_SIGNALS, body_text)
@@ -159,6 +159,17 @@ def classify_evidence(paper: Dict) -> Dict:
             "nonhuman empirical signal: " + ", ".join(nonhuman[:3]),
             -1.0,
         )
+
+    for rule in EVIDENCE_RULES[1:]:
+        matches = _matched(rule["signals"], body_text)
+        if matches:
+            return _result(
+                rule["level"],
+                rule["type"],
+                "passed",
+                "matched evidence signal: " + ", ".join(matches[:4]),
+                float(rule["score"]),
+            )
 
     if not abstract:
         return _result(
