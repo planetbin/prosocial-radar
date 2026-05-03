@@ -27,6 +27,8 @@ CSV_FIELDS = [
     "selection_status",
     "filter_decision",
     "filter_reason",
+    "topic_scope_decision",
+    "topic_scope_reason",
     "evidence_level",
     "evidence_type",
     "evidence_decision",
