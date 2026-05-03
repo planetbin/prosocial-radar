@@ -82,11 +82,15 @@ DEFAULT_PUBMED_QUERY = (
     '"neural"[tiab] OR "brain"[tiab])'
 )
 
-FETCH_BATCH = _env_int("PUBMED_FETCH_BATCH", _get("pubmed.fetch_batch", 100))
+FETCH_BATCH = _env_int("PUBMED_FETCH_BATCH", _get("pubmed.fetch_batch", 50))
+PUBMED_MAX_FETCH_BATCH = _env_int("PUBMED_MAX_FETCH_BATCH", _get("pubmed.max_fetch_batch", 50))
+PUBMED_MAX_RETRIES = _env_int("PUBMED_MAX_RETRIES", _get("pubmed.max_retries", 4))
+PUBMED_BACKOFF_SECONDS = _env_float("PUBMED_BACKOFF_SECONDS", _get("pubmed.backoff_seconds", 2.0))
+NCBI_API_KEY = _env_str("NCBI_API_KEY", "")
 MAX_RESULTS = _env_int("RADAR_MAX_RESULTS", _get("pubmed.max_results", 200))
 RECENT_DAYS = _env_int("RADAR_RECENT_DAYS", _get("pubmed.recent_days", 90))
 MAX_AGE_DAYS = _env_int("RADAR_MAX_AGE_DAYS", _get("pubmed.max_age_days", 1095))
-REQUEST_DELAY = _env_float("RADAR_REQUEST_DELAY", _get("pubmed.request_delay", 0.5))
+REQUEST_DELAY = _env_float("RADAR_REQUEST_DELAY", _get("pubmed.request_delay", 1.0))
 PUBMED_QUERY = _env_str("PUBMED_QUERY", str(_get("pubmed.query", DEFAULT_PUBMED_QUERY)))
 
 # OpenAlex API
