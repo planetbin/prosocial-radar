@@ -1,6 +1,6 @@
 {
-  "started_at_utc": "2026-05-03T06:58:09+00:00",
-  "finished_at_utc": "2026-05-03T06:58:24+00:00",
+  "started_at_utc": "2026-05-03T07:07:01+00:00",
+  "finished_at_utc": "2026-05-03T07:07:51+00:00",
   "status": "ok",
   "profile": {
     "name": "default",
@@ -12,8 +12,8 @@
     "no_openalex": false,
     "no_filter": false,
     "no_score": false,
-    "no_ai": true,
-    "no_push": false
+    "no_ai": false,
+    "no_push": true
   },
   "stages": {
     "pubmed_pmids": 417,
@@ -22,13 +22,13 @@
     "before_filter": 417,
     "after_filter": 367,
     "scored": 367,
-    "new_after_history": 289,
-    "already_seen_after_history": 78
+    "new_after_history": 282,
+    "already_seen_after_history": 85
   },
   "summaries": {
-    "attempted": 0,
-    "with_summary": 0,
-    "skipped_no_ai_flag": true
+    "attempted": 8,
+    "with_summary": 8,
+    "skipped_no_ai_flag": false
   },
   "outputs": {
     "all_candidates_csv": "outputs/all_candidates_20260503.csv",
@@ -38,10 +38,10 @@
     "run_report_json": "outputs/run_report_20260503.json"
   },
   "email": {
-    "attempted": true,
-    "sent": true,
+    "attempted": false,
+    "sent": false,
     "paper_count": 8,
-    "recipient_count": 1
+    "reason": "--no-push"
   },
   "errors": []
 }
