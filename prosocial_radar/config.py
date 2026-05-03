@@ -150,3 +150,10 @@ TAG_RULES = {
     str(tag): _as_list(patterns, [])
     for tag, patterns in (_get("filters.tag_rules", {}) or {}).items()
 }
+
+TOPIC_CORE_TERMS = _as_list(_get("filters.topic_relevance.core_terms"), [])
+TOPIC_PARADIGM_TERMS = _as_list(_get("filters.topic_relevance.paradigm_terms"), [])
+TOPIC_MECHANISM_TERMS = _as_list(_get("filters.topic_relevance.mechanism_terms"), [])
+TOPIC_CONTEXT_TERMS = _as_list(_get("filters.topic_relevance.context_terms"), [])
+TOPIC_SOFT_EXCLUDE_TERMS = _as_list(_get("filters.topic_relevance.soft_exclude_terms"), [])
+TOPIC_HARD_EXCLUDE_TERMS = _as_list(_get("filters.topic_relevance.hard_exclude_terms"), [])
