@@ -29,6 +29,7 @@ CSV_FIELDS = [
     "filter_reason",
     "topic_tier",
     "topic_reason",
+    "matched_title_anchor_terms",
     "matched_core_terms",
     "matched_paradigm_terms",
     "matched_mechanism_terms",
@@ -128,6 +129,7 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         cites_s = str(cites) if cites is not None else "-"
         tags = p.get("topic_tags", "")
         tier = p.get("topic_tier", "")
+        anchors = p.get("matched_title_anchor_terms", "")
         status = p.get("selection_status", "")
         reason = (p.get("selection_reason") or p.get("filter_reason") or "")[:140]
         authors = (p.get("authors") or "")[:100]
@@ -139,7 +141,7 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         if affiliation:
             print(f"       affiliation: {affiliation}")
         if tier:
-            print(f"       tier: {tier} | tags: {tags}")
+            print(f"       tier: {tier} | title anchors: {anchors} | tags: {tags}")
         else:
             print(f"       tags: {tags}")
         if reason:
