@@ -256,7 +256,7 @@ def main():
         }
         log.info("Email push skipped (--no-push). Top %d new papers:", len(top_new))
         for i, p in enumerate(top_new, 1):
-            log.info("  [%d] %.1f pts | %s", i, p.get("relevance_score", 0), p.get("title", "")[:70])
+            log.info("  [%d] %.1f pts | %s", i, (p.get("relevance_score") or 0), p.get("title", "")[:70])
 
     report_path = _finish_report(report, out_dir, "ok")
     log.info("Run report -> %s", report_path)
