@@ -7,15 +7,16 @@ Daily research radar for prosocial behavior papers. It searches PubMed, enriches
 - Searches PubMed with a configurable research profile.
 - Enriches DOI-matched papers with OpenAlex citation counts.
 - Filters papers with profile-driven topic and method/context keywords.
+- Applies evidence-tier screening so low-value publication types are filtered before AI summarization.
 - Preserves author and affiliation metadata from PubMed records.
 - Explains why each candidate passed or was filtered out.
-- Scores papers by relevance, recency, citations, and topic breadth, with a score breakdown.
+- Scores papers by relevance, recency, citations, topic breadth, and evidence tier, with a score breakdown.
 - Applies GitHub-native human feedback from labelled issues.
 - Removes papers already sent in previous digests.
 - Produces structured AI extraction fields for literature review work.
 - Saves compact durable outputs for new papers, run report, history, and feedback.
 - Uploads full candidate audits as GitHub Actions artifacts instead of committing large audit files.
-- Sends an HTML email digest with paper cards, author/institution lines, AI fields, selection reasons, and feedback buttons.
+- Sends an HTML email digest with paper cards, author/institution lines, evidence tiers, AI fields, selection reasons, and feedback buttons.
 
 ## Project Structure
 
@@ -28,6 +29,7 @@ Daily research radar for prosocial behavior papers. It searches PubMed, enriches
 │   ├── profile.py                  # YAML profile loader
 │   ├── pubmed.py                   # PubMed three-channel search and metadata parsing
 │   ├── openalex.py                 # citation enrichment
+│   ├── evidence.py                 # evidence-tier classification and screening rules
 │   ├── filter.py                   # dedup + profile-driven relevance filtering + filter audit
 │   ├── scorer.py                   # relevance scoring and score explanations
 │   ├── feedback.py                 # GitHub issue feedback sync and score adjustment
@@ -119,6 +121,24 @@ Bibliographic metadata fields include:
 - `last_author`
 - `first_author_affiliation`
 - `affiliations`
+- `publication_types`
+
+Evidence-tier fields include:
+
+- `evidence_level`
+- `evidence_type`
+- `evidence_decision`
+- `evidence_reason`
+- `evidence_score_adjustment`
+
+Evidence-tier screening keeps higher-value literature review inputs and filters low-screening-value records:
+
+- `L1 evidence synthesis`: meta-analysis, systematic review, umbrella/scoping review, review
+- `L2 causal/experimental`: randomized, controlled trial, experiment, intervention, causal inference
+- `L3 longitudinal/cohort`: longitudinal, cohort, prospective, follow-up, panel designs
+- `L4 human empirical`: survey, behavioral task, reported sample, human neuroscience measure
+- `L5 computational/method`, `L5 nonhuman empirical`, or `L5 unclear evidence`: retained but downweighted when appropriate
+- `L6 low evidence`: filtered out for protocol, editorial/commentary, letter/correction, case report, news item, or missing abstract
 
 Audit and explanation fields include:
 
@@ -131,6 +151,7 @@ Audit and explanation fields include:
 - `score_citation`
 - `score_recency`
 - `score_breadth`
+- `score_evidence`
 - `score_breakdown`
 - `selection_reason`
 - `feedback_rating`
@@ -148,7 +169,7 @@ Structured AI fields include:
 - `ai_why_it_matters`
 - `ai_bibtex_keywords`
 
-The run report records counts for each stage: PMIDs found, details fetched, unique candidates, filtered-out candidates, after-filter candidates, new papers, summary attempts, successful summaries, feedback sync, email status, and output paths.
+The run report records counts for each stage: PMIDs found, details fetched, unique candidates, filtered-out candidates, after-filter candidates, evidence-tier counts, new papers, summary attempts, successful summaries, feedback sync, email status, and output paths.
 
 ## Email Digest
 
@@ -156,8 +177,9 @@ The email contains:
 
 - ranked paper cards
 - authors and first-author institution/affiliation when PubMed provides them
+- evidence tier and evidence reason
 - structured AI summary fields when available
-- `Why selected` explanations from filter and score fields
+- `Why selected` explanations from filter, score, evidence, and feedback fields
 - four feedback buttons: `Must read`, `Useful`, `Maybe`, `Ignore`
 
 ## Human Feedback Loop
