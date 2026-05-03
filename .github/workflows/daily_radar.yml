@@ -1,6 +1,13 @@
 name: Prosocial Research Radar - Daily Run
 
 on:
+  # One-shot preview trigger for this temporary branch only.
+  push:
+    branches:
+      - codex/action-mail-preview-20260503
+    paths:
+      - ".github/workflows/daily_radar.yml"
+
   # Scheduled trigger: UTC 00:00 = Beijing 08:00 (UTC+8)
   schedule:
     - cron: "0 0 * * *"
