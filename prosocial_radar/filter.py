@@ -10,6 +10,7 @@ import re
 from typing import Dict, Iterable, List
 
 from .config import TAG_RULES, TARGET_JOURNALS, TIER_A, TIER_B
+from .evidence import annotate_evidence
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +62,14 @@ def _assign_tags(text: str) -> List[str]:
     return tags
 
 
-def _filter_reason(tier_a: List[str], tier_b: List[str], tags: List[str], high_quality: bool) -> str:
+def _filter_reason(
+    tier_a: List[str],
+    tier_b: List[str],
+    tags: List[str],
+    high_quality: bool,
+    evidence_decision: str,
+    evidence_reason: str,
+) -> str:
     reasons = []
     if tier_a:
         reasons.append("matched Tier-A core topic: " + ", ".join(tier_a[:6]))
@@ -72,6 +80,11 @@ def _filter_reason(tier_a: List[str], tier_b: List[str], tags: List[str], high_q
         reasons.append("matched Tier-B context/method: " + ", ".join(tier_b[:6]))
     else:
         reasons.append("missing Tier-B context or method keyword")
+
+    if evidence_decision == "passed":
+        reasons.append("evidence tier retained: " + evidence_reason)
+    else:
+        reasons.append("evidence tier filtered: " + evidence_reason)
 
     if tags:
         reasons.append("topic tags: " + ", ".join(tags))
@@ -87,7 +100,10 @@ def annotate_filter_decision(paper: Dict) -> Dict:
     tier_b = _matched_patterns(TIER_B, text)
     tags = _assign_tags(text)
     high_quality = _journal_match(paper)
-    passed = bool(tier_a and tier_b)
+    annotate_evidence(paper)
+    evidence_decision = paper.get("evidence_decision", "passed")
+    evidence_reason = paper.get("evidence_reason", "")
+    passed = bool(tier_a and tier_b and evidence_decision == "passed")
 
     paper["matched_tier_a"] = "; ".join(tier_a)
     paper["matched_tier_b"] = "; ".join(tier_b)
@@ -95,7 +111,14 @@ def annotate_filter_decision(paper: Dict) -> Dict:
     paper["topic_tags"] = "; ".join(tags)
     paper["is_high_quality"] = high_quality
     paper["filter_decision"] = "passed" if passed else "filtered_out"
-    paper["filter_reason"] = _filter_reason(tier_a, tier_b, tags, high_quality)
+    paper["filter_reason"] = _filter_reason(
+        tier_a,
+        tier_b,
+        tags,
+        high_quality,
+        evidence_decision,
+        evidence_reason,
+    )
     return paper
 
 
@@ -129,24 +152,24 @@ def build_filter_audit(papers: List[Dict]) -> List[Dict]:
 
 
 def apply_filters(papers: List[Dict]) -> List[Dict]:
-    """Apply the profile's keyword relevance gate."""
+    """Apply the profile's keyword relevance and evidence-tier gates."""
     for paper in papers:
         if not paper.get("filter_decision"):
             annotate_filter_decision(paper)
     passed = [p for p in papers if p.get("filter_decision") == "passed"]
-    log.info("Relevance filter: %d -> %d papers", len(papers), len(passed))
+    log.info("Relevance + evidence filter: %d -> %d papers", len(papers), len(passed))
     return passed
 
 
 def enrich_metadata(papers: List[Dict]) -> List[Dict]:
-    """Add topic_tags, match audit, and is_high_quality flag to each paper."""
+    """Add topic_tags, match audit, evidence tier, and is_high_quality flag to each paper."""
     for p in papers:
         annotate_filter_decision(p)
     return papers
 
 
 def run_filter_pipeline(papers: List[Dict]) -> List[Dict]:
-    """Full pipeline: dedup -> relevance filter -> metadata enrichment."""
+    """Full pipeline: dedup -> relevance/evidence filter -> metadata enrichment."""
     audit = build_filter_audit(papers)
     papers = apply_filters(audit)
     log.info("Filter pipeline complete: %d papers retained", len(papers))
