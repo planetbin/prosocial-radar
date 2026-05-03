@@ -193,7 +193,7 @@ def _markdown_digest_block(digest_markdown: str) -> str:
         '<pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-size:12px;'
         'line-height:1.5;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;'
         'border-radius:6px;padding:12px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;">'
-        f'{html.escape(digest_markdown)}'</pre></div>'
+        f'{html.escape(digest_markdown)}</pre></div>'
     )
 
 
