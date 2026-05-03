@@ -1,14 +1,11 @@
-name: Prosocial Research Radar — Daily Run
+name: Prosocial Research Radar - Daily Run
 
 on:
-  # ── Scheduled trigger ─────────────────────────────────────
-  # UTC 00:00 = Beijing 08:00 (UTC+8)
-  # Change the time here to suit your timezone:
-  #   06:00 UTC = 14:00 Beijing | 02:00 UTC = 10:00 Beijing
+  # Scheduled trigger: UTC 00:00 = Beijing 08:00 (UTC+8)
   schedule:
     - cron: "0 0 * * *"
 
-  # ── Manual trigger (run anytime from GitHub Actions tab) ──────────────────
+  # Manual trigger from the GitHub Actions tab
   workflow_dispatch:
     inputs:
       top:
@@ -20,7 +17,6 @@ on:
         default: "false"
         required: false
 
-# Prevent two runs from stepping on each other
 concurrency:
   group: radar
   cancel-in-progress: false
@@ -30,19 +26,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # Allow the job to push changes back to the repo
     permissions:
       contents: write
+      issues: read
 
     steps:
-      # ── 1. Checkout ─────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Fetch full history so we can commit back
           fetch-depth: 0
 
-      # ── 2. Python setup ─────────────────────────────────────
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -52,13 +45,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # ── 3. Run radar ────────────────────────────────────────
       - name: Run Prosocial Research Radar
         env:
           DEEPSEEK_API_KEY:   ${{ secrets.DEEPSEEK_API_KEY }}
           ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
           GMAIL_ADDRESS:      ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GITHUB_TOKEN:       ${{ github.token }}
         run: |
           TOP="${{ github.event.inputs.top || '8' }}"
           NO_AI="${{ github.event.inputs.no_ai || 'false' }}"
@@ -71,16 +64,29 @@ jobs:
           echo "Running: $CMD"
           $CMD
 
-      # ── 4. Persist history & outputs back to repo ─────────────────────────
-      - name: Commit history and outputs
+      - name: Upload full candidate audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-candidates-${{ github.run_id }}
+          path: |
+            outputs/all_candidates_*.csv
+            outputs/all_candidates_*.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Commit history and compact outputs
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stage history and output files if they changed
-          git add data/sent_history.json outputs/ 2>/dev/null || true
+          [ -f data/sent_history.json ] && git add data/sent_history.json
+          [ -f data/feedback.json ] && git add data/feedback.json
+          for pattern in outputs/new_papers_*.csv outputs/new_papers_*.json outputs/digest_*.md outputs/run_report_*.json; do
+            for file in $pattern; do
+              [ -e "$file" ] && git add "$file"
+            done
+          done
 
-          # Only commit if there is something to commit
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
