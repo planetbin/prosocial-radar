@@ -5,7 +5,7 @@ Prosocial Research Radar main entry point.
 Pipeline:
   PubMed fetch -> OpenAlex citations -> dedup/filter audit -> score
   -> GitHub feedback adjustment -> history dedup -> structured AI summarize
-  -> split CSV/JSON/Markdown outputs -> email push -> run report
+  -> split CSV/JSON outputs -> email push -> run report
 """
 
 import argparse
@@ -15,7 +15,6 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from prosocial_radar import config
-from prosocial_radar.digest import build_markdown_digest, save_markdown_digest
 from prosocial_radar.feedback import apply_feedback_adjustments, attach_feedback_links, sync_feedback_from_github
 from prosocial_radar.filter import build_filter_audit
 from prosocial_radar.history import filter_new_papers, mark_as_sent
@@ -210,8 +209,6 @@ def main():
 
     attach_feedback_links(candidate_audit)
     top_new = new_papers[:args.top]
-    digest_markdown = build_markdown_digest(top_new, total_found=total_after_filter)
-    digest_path = save_markdown_digest(digest_markdown, out_dir)
 
     all_csv = save_csv(candidate_audit, out_dir, prefix="all_candidates")
     all_json = save_json(candidate_audit, out_dir, prefix="all_candidates")
@@ -225,7 +222,6 @@ def main():
             "all_candidates_policy": "GitHub Actions artifact only; not committed back to the repository",
             "new_papers_csv": _path(new_csv),
             "new_papers_json": _path(new_json),
-            "digest_markdown": _path(digest_path),
         }
     )
 
@@ -235,13 +231,12 @@ def main():
         log.info("  %s -> %s", key, value)
 
     if not args.no_push:
-        sent = send_email(top_new, total_found=total_after_filter, digest_markdown=digest_markdown)
+        sent = send_email(top_new, total_found=total_after_filter)
         report["email"] = {
             "attempted": bool(top_new),
             "sent": bool(sent),
             "paper_count": len(top_new),
             "recipient_count": len(config.EMAIL_RECIPIENTS),
-            "includes_markdown_digest": bool(digest_markdown.strip()),
             "includes_feedback_links": bool(top_new),
         }
         if sent:
@@ -252,7 +247,6 @@ def main():
             "sent": False,
             "paper_count": len(top_new),
             "reason": "--no-push",
-            "includes_markdown_digest": bool(digest_markdown.strip()),
         }
         log.info("Email push skipped (--no-push). Top %d new papers:", len(top_new))
         for i, p in enumerate(top_new, 1):
