@@ -7,12 +7,62 @@ Journal is used as a quality badge, not as a hard filter.
 
 import logging
 import re
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Tuple
 
 from .config import TAG_RULES, TARGET_JOURNALS, TIER_A, TIER_B
 from .evidence import annotate_evidence
 
 log = logging.getLogger(__name__)
+
+PRIMARY_TOPIC_PATTERNS = [
+    r"\bprosocial(?:ity)?\b",
+    r"\baltruism\b",
+    r"\baltruistic\b",
+    r"\bempathy\b",
+    r"\bempathic\b",
+    r"\bempathetic\b",
+    r"\bcompassion\b",
+    r"\bgenerosity\b",
+    r"\bcharitable\b",
+    r"\bdonat\w*\b",
+    r"\bgiving\b",
+    r"\bhelping behavior\b",
+    r"\bhelping behaviour\b",
+    r"\btrust game\b",
+    r"\bdictator game\b",
+    r"\bultimatum game\b",
+    r"\bpublic goods game\b",
+    r"\bsocial preference\b",
+    r"\bsocial decision",
+    r"\bsocial cognition\b",
+    r"\bsocial behavior\b",
+    r"\bsocial behaviour\b",
+    r"\bfairness\b",
+    r"\bmoral\b",
+]
+
+BROAD_TOPIC_PATTERNS = [
+    r"\bcooperation\b",
+    r"\bcooperative\b",
+]
+
+SOCIAL_CONTEXT_PATTERNS = [
+    r"\bsocial\b",
+    r"\bprosocial\b",
+    r"\baltru\w*\b",
+    r"\bempath\w*\b",
+    r"\bhuman\b",
+    r"\bparticipant\b",
+    r"\bparticipants\b",
+    r"\bdecision[- ]making\b",
+    r"\bgame\b",
+    r"\bfairness\b",
+    r"\btrust\b",
+    r"\brecipro\w*\b",
+    r"\bhelping\b",
+    r"\bdonat\w*\b",
+    r"\bmoral\b",
+]
 
 
 def _lower_text(paper: Dict) -> str:
@@ -31,6 +81,7 @@ def _journal_match(paper: Dict) -> bool:
 def _display_pattern(pattern: str) -> str:
     text = pattern.replace(r"\b", "").replace(r"\s+", " ")
     text = text.replace(".*", " ... ").replace("\\", "")
+    text = text.replace("?:", "")
     text = re.sub(r"\s+", " ", text).strip(" ^$")
     return text or pattern
 
@@ -62,6 +113,22 @@ def _assign_tags(text: str) -> List[str]:
     return tags
 
 
+def _topic_scope_decision(text: str, tier_a: List[str]) -> Tuple[str, str]:
+    primary = _matched_patterns(PRIMARY_TOPIC_PATTERNS, text)
+    if primary:
+        return "passed", "primary prosocial/social-behavior signal: " + ", ".join(primary[:6])
+
+    broad = _matched_patterns(BROAD_TOPIC_PATTERNS, text)
+    context = _matched_patterns(SOCIAL_CONTEXT_PATTERNS, text)
+    if broad and context:
+        return "passed", "broad cooperation signal contextualized by: " + ", ".join(context[:5])
+    if broad:
+        return "filtered_out", "matched only broad cooperation/cooperative wording without human social-behavior context"
+    if tier_a:
+        return "filtered_out", "matched profile topic terms but no primary prosocial/social-behavior scope"
+    return "filtered_out", "missing primary prosocial/social-behavior scope"
+
+
 def _filter_reason(
     tier_a: List[str],
     tier_b: List[str],
@@ -69,6 +136,8 @@ def _filter_reason(
     high_quality: bool,
     evidence_decision: str,
     evidence_reason: str,
+    topic_scope_decision: str,
+    topic_scope_reason: str,
 ) -> str:
     reasons = []
     if tier_a:
@@ -80,6 +149,11 @@ def _filter_reason(
         reasons.append("matched Tier-B context/method: " + ", ".join(tier_b[:6]))
     else:
         reasons.append("missing Tier-B context or method keyword")
+
+    if topic_scope_decision == "passed":
+        reasons.append("topic scope retained: " + topic_scope_reason)
+    else:
+        reasons.append("topic scope filtered: " + topic_scope_reason)
 
     if evidence_decision == "passed":
         reasons.append("evidence tier retained: " + evidence_reason)
@@ -103,12 +177,15 @@ def annotate_filter_decision(paper: Dict) -> Dict:
     annotate_evidence(paper)
     evidence_decision = paper.get("evidence_decision", "passed")
     evidence_reason = paper.get("evidence_reason", "")
-    passed = bool(tier_a and tier_b and evidence_decision == "passed")
+    topic_scope_decision, topic_scope_reason = _topic_scope_decision(text, tier_a)
+    passed = bool(tier_a and tier_b and topic_scope_decision == "passed" and evidence_decision == "passed")
 
     paper["matched_tier_a"] = "; ".join(tier_a)
     paper["matched_tier_b"] = "; ".join(tier_b)
     paper["matched_tags"] = "; ".join(tags)
     paper["topic_tags"] = "; ".join(tags)
+    paper["topic_scope_decision"] = topic_scope_decision
+    paper["topic_scope_reason"] = topic_scope_reason
     paper["is_high_quality"] = high_quality
     paper["filter_decision"] = "passed" if passed else "filtered_out"
     paper["filter_reason"] = _filter_reason(
@@ -118,6 +195,8 @@ def annotate_filter_decision(paper: Dict) -> Dict:
         high_quality,
         evidence_decision,
         evidence_reason,
+        topic_scope_decision,
+        topic_scope_reason,
     )
     return paper
 
@@ -152,24 +231,24 @@ def build_filter_audit(papers: List[Dict]) -> List[Dict]:
 
 
 def apply_filters(papers: List[Dict]) -> List[Dict]:
-    """Apply the profile's keyword relevance and evidence-tier gates."""
+    """Apply the profile's keyword relevance, topic-scope, and evidence-tier gates."""
     for paper in papers:
         if not paper.get("filter_decision"):
             annotate_filter_decision(paper)
     passed = [p for p in papers if p.get("filter_decision") == "passed"]
-    log.info("Relevance + evidence filter: %d -> %d papers", len(papers), len(passed))
+    log.info("Relevance + topic scope + evidence filter: %d -> %d papers", len(papers), len(passed))
     return passed
 
 
 def enrich_metadata(papers: List[Dict]) -> List[Dict]:
-    """Add topic_tags, match audit, evidence tier, and is_high_quality flag to each paper."""
+    """Add topic tags, topic scope, evidence tier, and quality flag to each paper."""
     for p in papers:
         annotate_filter_decision(p)
     return papers
 
 
 def run_filter_pipeline(papers: List[Dict]) -> List[Dict]:
-    """Full pipeline: dedup -> relevance/evidence filter -> metadata enrichment."""
+    """Full pipeline: dedup -> relevance/topic/evidence filter -> metadata enrichment."""
     audit = build_filter_audit(papers)
     papers = apply_filters(audit)
     log.info("Filter pipeline complete: %d papers retained", len(papers))
