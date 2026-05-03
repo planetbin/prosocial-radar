@@ -12,6 +12,10 @@ logs/
 tmp/
 *.tmp
 
+# Full candidate audits are uploaded as GitHub Actions artifacts, not committed.
+outputs/all_candidates_*.csv
+outputs/all_candidates_*.json
+
 # Output files are committed via Actions, not by accident locally
 # (comment out the next two lines if you want local outputs tracked)
 # outputs/
