@@ -2,11 +2,14 @@ name: default
 description: Default radar for prosocial behavior, development, empathy, cooperation, and social neuroscience.
 
 pubmed:
-  fetch_batch: 100
+  fetch_batch: 50
+  max_fetch_batch: 50
+  max_retries: 4
+  backoff_seconds: 2.0
   max_results: 200
   recent_days: 90
   max_age_days: 1095
-  request_delay: 0.5
+  request_delay: 1.0
   query: >-
     (prosocial[tiab] OR altruism[tiab] OR altruistic[tiab] OR empathy[tiab] OR
     "charitable giving"[tiab] OR "social decision making"[tiab] OR
