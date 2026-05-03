@@ -13,6 +13,10 @@ CSV_FIELDS = [
     "pmid",
     "title",
     "authors",
+    "first_author",
+    "last_author",
+    "first_author_affiliation",
+    "affiliations",
     "year",
     "journal",
     "doi",
@@ -113,8 +117,14 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         tags = p.get("topic_tags", "")
         status = p.get("selection_status", "")
         reason = (p.get("selection_reason") or p.get("filter_reason") or "")[:120]
+        authors = (p.get("authors") or "")[:100]
+        affiliation = (p.get("first_author_affiliation") or p.get("affiliations") or "")[:120]
         print(f"\n[{i:>3}] {paper_title}")
         print(f"       {journal} ({year}) | citations: {cites_s} | {status}")
+        if authors:
+            print(f"       authors: {authors}")
+        if affiliation:
+            print(f"       affiliation: {affiliation}")
         print(f"       tags: {tags}")
         if reason:
             print(f"       why: {reason}")
