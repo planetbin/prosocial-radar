@@ -84,6 +84,13 @@ def _detail(label: str, value: str) -> str:
     )
 
 
+def _shorten(value: str, limit: int = 260) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit - 1].rstrip() + "..."
+
+
 def _feedback_buttons(p: Dict) -> str:
     links = p.get("feedback_links") or {}
     buttons = []
@@ -117,6 +124,8 @@ def _paper_card(rank: int, p: Dict) -> str:
     ai_summary = p.get("ai_summary", "")
     ai_finding = p.get("ai_finding", "")
     ai_method = p.get("ai_method", "")
+    authors = p.get("authors", "")
+    institution = _shorten(p.get("first_author_affiliation") or p.get("affiliations") or "")
 
     cite_str = f"{citations:,}" if citations and citations > 0 else "-"
     score_str = f"{score:.0f}" if isinstance(score, (int, float)) else "-"
@@ -174,6 +183,8 @@ def _paper_card(rank: int, p: Dict) -> str:
         f'&nbsp;|&nbsp;Citations: <strong>{cite_str}</strong></span></div>'
         f'<h3 style="margin:0 0 6px;font-size:15px;line-height:1.4;color:#0f172a;">{title}</h3>'
         f'<p style="margin:0 0 8px;font-size:12px;color:#64748b;">{journal} &nbsp;&middot;&nbsp; {year}</p>'
+        f'{_detail("Authors", authors)}'
+        f'{_detail("Institution", institution)}'
         f'<div style="margin-bottom:8px;">{method_html}{_tag_badges(tags)}</div>'
         f'{explanation_block}'
         f'{ai_block}'
