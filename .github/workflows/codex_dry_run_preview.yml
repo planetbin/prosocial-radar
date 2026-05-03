@@ -1,0 +1,41 @@
+name: Prosocial Radar Dry Run Preview
+
+on:
+  push:
+    branches:
+      - codex/dry-run-ranking-20260503-2045
+
+concurrency:
+  group: radar-dry-run-preview
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      issues: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ranking preview only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+        run: |
+          python run_radar.py --top 20 --no-ai --no-push
