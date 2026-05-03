@@ -91,6 +91,7 @@ def _init_report(args) -> dict:
             "no_push": args.no_push,
         },
         "stages": {},
+        "topic_scope": {},
         "evidence": {},
         "summaries": {},
         "outputs": {},
@@ -160,6 +161,7 @@ def main():
 
     papers = fetch_details(pmids)
     report["stages"]["pubmed_details"] = len(papers)
+    report["stages"]["pubmed_detail_missing"] = max(len(pmids) - len(papers), 0)
     if not papers:
         log.error("No paper details fetched.")
         _finish_report(report, out_dir, "failed", "No paper details fetched")
@@ -176,6 +178,11 @@ def main():
 
     before_filter = len(papers)
     candidate_audit = build_filter_audit(papers)
+    report["topic_scope"] = {
+        "decisions": _count_values(candidate_audit, "topic_scope_decision"),
+        "passed": sum(1 for p in candidate_audit if p.get("topic_scope_decision") == "passed"),
+        "filtered_out": sum(1 for p in candidate_audit if p.get("topic_scope_decision") == "filtered_out"),
+    }
     report["evidence"] = {
         "levels": _count_values(candidate_audit, "evidence_level"),
         "types": _count_values(candidate_audit, "evidence_type"),
