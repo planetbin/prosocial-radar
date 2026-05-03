@@ -98,16 +98,27 @@ def _classify_topic(paper: Dict, text: str) -> Dict[str, object]:
     context = _matched_patterns(patterns["context"], text)
     soft_exclude = _matched_patterns(patterns["soft_exclude"], text)
     hard_exclude = _matched_patterns(patterns["hard_exclude"], text)
-    title_core = _matched_patterns(patterns["core"] + patterns["paradigm"], title)
+    title_anchor = _matched_patterns(patterns["core"] + patterns["paradigm"], title)
 
     direct_anchor = bool(core or paradigm)
-    if direct_anchor:
+    has_title_anchor = bool(title_anchor)
+    if hard_exclude and not has_title_anchor:
+        tier = "exclude"
+        reason = (
+            "filtered: hard-exclude signal without a direct title anchor: "
+            + _join(hard_exclude, 4)
+        )
+        if direct_anchor:
+            reason += "; direct anchor was abstract/keyword-only: " + _join(core + paradigm, 5)
+        if mechanism or context:
+            reason += "; adjacent matches: " + _join(mechanism + context, 5)
+    elif direct_anchor:
         tier = "mechanism_linked" if mechanism else "core"
         reason = "selected: direct prosocial/social-decision anchor"
-        if title_core:
-            reason += " in title: " + _join(title_core, 4)
+        if title_anchor:
+            reason += " in title: " + _join(title_anchor, 4)
         else:
-            reason += ": " + _join(core + paradigm, 5)
+            reason += " outside title: " + _join(core + paradigm, 5)
         if mechanism:
             reason += "; linked mechanism/method: " + _join(mechanism, 4)
         if context:
@@ -115,7 +126,7 @@ def _classify_topic(paper: Dict, text: str) -> Dict[str, object]:
         if soft_exclude:
             reason += "; caution signal: " + _join(soft_exclude, 3)
         if hard_exclude:
-            reason += "; hard-exclude signal overridden by direct anchor: " + _join(hard_exclude, 3)
+            reason += "; hard-exclude signal overridden by title anchor: " + _join(hard_exclude, 3)
     elif hard_exclude:
         tier = "exclude"
         reason = (
@@ -138,6 +149,7 @@ def _classify_topic(paper: Dict, text: str) -> Dict[str, object]:
     return {
         "topic_tier": tier,
         "topic_reason": reason,
+        "matched_title_anchor_terms": title_anchor,
         "matched_core_terms": core,
         "matched_paradigm_terms": paradigm,
         "matched_mechanism_terms": mechanism,
@@ -166,6 +178,7 @@ def annotate_filter_decision(paper: Dict) -> Dict:
 
     paper["topic_tier"] = topic["topic_tier"]
     paper["topic_reason"] = topic["topic_reason"]
+    paper["matched_title_anchor_terms"] = _join(topic["matched_title_anchor_terms"])
     paper["matched_core_terms"] = _join(topic["matched_core_terms"])
     paper["matched_paradigm_terms"] = _join(topic["matched_paradigm_terms"])
     paper["matched_mechanism_terms"] = _join(topic["matched_mechanism_terms"])
