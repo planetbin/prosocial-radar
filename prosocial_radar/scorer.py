@@ -6,7 +6,6 @@ Computes a relevance_score (0-100) for each paper based on:
   - Citation bonus (log-scaled)                            -> up to 25 pts
   - Recency bonus (papers <=3 years old, heavily weighted) -> up to 25 pts
   - Topic breadth bonus (multiple tags hit)                -> up to 10 pts
-  - Evidence-tier adjustment                               -> -25 to +10 pts
 """
 
 import logging
@@ -95,44 +94,29 @@ def _breadth_bonus(paper: Dict) -> float:
     return min(len(tags) * 2.5, 10.0)
 
 
-def _evidence_adjustment(paper: Dict) -> float:
-    """Evidence-tier adjustment assigned during filtering."""
-    try:
-        return float(paper.get("evidence_score_adjustment") or 0.0)
-    except (TypeError, ValueError):
-        return 0.0
-
-
 def _score_components(paper: Dict) -> Dict[str, float]:
     kw_raw = _keyword_score(paper)
     kw = min(kw_raw, 40.0)
     cit = _citation_bonus(paper)
     rec = _recency_bonus(paper)
     br = _breadth_bonus(paper)
-    ev = _evidence_adjustment(paper)
-    final = min(max(round(kw + cit + rec + br + ev, 1), 0.0), 100.0)
+    final = min(round(kw + cit + rec + br, 1), 100.0)
     return {
         "keyword": round(kw, 1),
         "keyword_raw": round(kw_raw, 1),
         "citation": round(cit, 1),
         "recency": round(rec, 1),
         "breadth": round(br, 1),
-        "evidence": round(ev, 1),
         "final": final,
     }
 
 
 def _selection_reason(paper: Dict, components: Dict[str, float]) -> str:
     parts = [
-        (
-            "score {final:.1f}: keywords {keyword:.1f}/40, citations {citation:.1f}/25, "
-            "recency {recency:.1f}/25, breadth {breadth:.1f}/10, evidence {evidence:+.1f}"
-        ).format(**components)
+        "score {final:.1f}: keywords {keyword:.1f}/40, citations {citation:.1f}/25, recency {recency:.1f}/25, breadth {breadth:.1f}/10".format(**components)
     ]
     if paper.get("filter_reason"):
         parts.append("filter passed because " + str(paper.get("filter_reason")))
-    if paper.get("evidence_level"):
-        parts.append("evidence tier: " + str(paper.get("evidence_level")))
     if paper.get("is_high_quality"):
         parts.append("target-journal quality badge")
     return "; ".join(parts)
@@ -153,14 +137,12 @@ def score_papers(papers: List[Dict]) -> List[Dict]:
         p["score_citation"] = components["citation"]
         p["score_recency"] = components["recency"]
         p["score_breadth"] = components["breadth"]
-        p["score_evidence"] = components["evidence"]
         p["relevance_score"] = components["final"]
         p["score_breakdown"] = (
             f"keyword={components['keyword']:.1f}; "
             f"citation={components['citation']:.1f}; "
             f"recency={components['recency']:.1f}; "
-            f"breadth={components['breadth']:.1f}; "
-            f"evidence={components['evidence']:+.1f}"
+            f"breadth={components['breadth']:.1f}"
         )
         p["selection_reason"] = _selection_reason(p, components)
 
