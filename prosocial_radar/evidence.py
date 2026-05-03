@@ -138,6 +138,15 @@ def classify_evidence(paper: Dict) -> Dict:
             -25.0,
         )
 
+    if not abstract:
+        return _result(
+            "L6 low evidence",
+            "no_abstract",
+            "filtered_out",
+            "no abstract available for efficient screening",
+            -20.0,
+        )
+
     synthesis_rule = EVIDENCE_RULES[0]
     synthesis_matches = _matched(synthesis_rule["signals"], title_and_type)
     if synthesis_matches:
@@ -170,15 +179,6 @@ def classify_evidence(paper: Dict) -> Dict:
                 "matched evidence signal: " + ", ".join(matches[:4]),
                 float(rule["score"]),
             )
-
-    if not abstract:
-        return _result(
-            "L6 low evidence",
-            "no_abstract",
-            "filtered_out",
-            "no abstract available for efficient screening",
-            -20.0,
-        )
 
     return DEFAULT_RESULT.copy()
 
