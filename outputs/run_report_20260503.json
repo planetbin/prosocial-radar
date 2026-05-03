@@ -1,6 +1,6 @@
 {
-  "started_at_utc": "2026-05-03T07:07:01+00:00",
-  "finished_at_utc": "2026-05-03T07:07:51+00:00",
+  "started_at_utc": "2026-05-03T12:12:21+00:00",
+  "finished_at_utc": "2026-05-03T12:13:14+00:00",
   "status": "ok",
   "profile": {
     "name": "default",
@@ -13,16 +13,19 @@
     "no_filter": false,
     "no_score": false,
     "no_ai": false,
-    "no_push": true
+    "no_push": false
   },
   "stages": {
-    "pubmed_pmids": 417,
-    "pubmed_details": 417,
-    "openalex_enriched": 405,
-    "before_filter": 417,
-    "after_filter": 367,
-    "scored": 367,
-    "new_after_history": 282,
+    "pubmed_pmids": 418,
+    "pubmed_details": 418,
+    "openalex_enriched": 410,
+    "before_filter": 418,
+    "unique_after_dedup": 418,
+    "after_filter": 369,
+    "filtered_out": 49,
+    "scored": 369,
+    "feedback_adjusted": 0,
+    "new_after_history": 284,
     "already_seen_after_history": 85
   },
   "summaries": {
@@ -33,15 +36,23 @@
   "outputs": {
     "all_candidates_csv": "outputs/all_candidates_20260503.csv",
     "all_candidates_json": "outputs/all_candidates_20260503.json",
+    "all_candidates_policy": "GitHub Actions artifact only; not committed back to the repository",
     "new_papers_csv": "outputs/new_papers_20260503.csv",
     "new_papers_json": "outputs/new_papers_20260503.json",
     "run_report_json": "outputs/run_report_20260503.json"
   },
   "email": {
-    "attempted": false,
-    "sent": false,
+    "attempted": true,
+    "sent": true,
     "paper_count": 8,
-    "reason": "--no-push"
+    "recipient_count": 1,
+    "includes_feedback_links": true
+  },
+  "feedback": {
+    "enabled": true,
+    "synced": true,
+    "issues_imported": 0,
+    "count": 0
   },
   "errors": []
 }
