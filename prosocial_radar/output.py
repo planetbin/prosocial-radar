@@ -20,7 +20,22 @@ CSV_FIELDS = [
     "doi_url",
     "is_new",
     "selection_status",
+    "filter_decision",
+    "filter_reason",
+    "matched_tier_a",
+    "matched_tier_b",
+    "matched_tags",
     "relevance_score",
+    "score_keyword",
+    "score_keyword_raw",
+    "score_citation",
+    "score_recency",
+    "score_breadth",
+    "score_breakdown",
+    "selection_reason",
+    "feedback_rating",
+    "feedback_adjustment",
+    "feedback_reason",
     "citation_count",
     "is_high_quality",
     "topic_tags",
@@ -35,6 +50,10 @@ CSV_FIELDS = [
     "ai_limitations",
     "ai_why_it_matters",
     "ai_bibtex_keywords",
+    "feedback_must_read_url",
+    "feedback_useful_url",
+    "feedback_maybe_url",
+    "feedback_ignore_url",
     "keywords",
     "abstract",
 ]
@@ -93,9 +112,12 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         cites_s = str(cites) if cites is not None else "-"
         tags = p.get("topic_tags", "")
         status = p.get("selection_status", "")
+        reason = (p.get("selection_reason") or p.get("filter_reason") or "")[:120]
         print(f"\n[{i:>3}] {paper_title}")
         print(f"       {journal} ({year}) | citations: {cites_s} | {status}")
         print(f"       tags: {tags}")
+        if reason:
+            print(f"       why: {reason}")
     if len(papers) > 20:
         print(f"\n  ... and {len(papers) - 20} more papers in the output files.")
     print(f"\n{'=' * 80}\n")
