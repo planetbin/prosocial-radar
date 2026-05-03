@@ -1,6 +1,6 @@
 {
-  "started_at_utc": "2026-05-03T12:12:21+00:00",
-  "finished_at_utc": "2026-05-03T12:13:14+00:00",
+  "started_at_utc": "2026-05-03T12:28:50+00:00",
+  "finished_at_utc": "2026-05-03T12:29:16+00:00",
   "status": "ok",
   "profile": {
     "name": "default",
@@ -8,7 +8,7 @@
   },
   "parameters": {
     "max_per_channel": 200,
-    "top": 8,
+    "top": 3,
     "no_openalex": false,
     "no_filter": false,
     "no_score": false,
@@ -17,20 +17,45 @@
   },
   "stages": {
     "pubmed_pmids": 418,
-    "pubmed_details": 418,
-    "openalex_enriched": 410,
-    "before_filter": 418,
-    "unique_after_dedup": 418,
-    "after_filter": 369,
-    "filtered_out": 49,
-    "scored": 369,
+    "pubmed_details": 318,
+    "openalex_enriched": 311,
+    "before_filter": 318,
+    "unique_after_dedup": 318,
+    "after_filter": 274,
+    "filtered_out": 44,
+    "scored": 274,
     "feedback_adjusted": 0,
-    "new_after_history": 284,
-    "already_seen_after_history": 85
+    "new_after_history": 199,
+    "already_seen_after_history": 75
+  },
+  "evidence": {
+    "levels": {
+      "L1 evidence synthesis": 58,
+      "L2 causal/experimental": 53,
+      "L3 longitudinal/cohort": 19,
+      "L4 human empirical": 113,
+      "L5 computational/method": 18,
+      "L5 nonhuman empirical": 4,
+      "L5 unclear evidence": 42,
+      "L6 low evidence": 11
+    },
+    "types": {
+      "causal_experimental": 53,
+      "computational_method": 18,
+      "empirical_human": 113,
+      "evidence_synthesis": 58,
+      "longitudinal_cohort": 19,
+      "low_signal_publication": 6,
+      "no_abstract": 5,
+      "nonhuman_empirical": 4,
+      "unclear": 42
+    },
+    "passed": 307,
+    "filtered_out": 11
   },
   "summaries": {
-    "attempted": 8,
-    "with_summary": 8,
+    "attempted": 3,
+    "with_summary": 3,
     "skipped_no_ai_flag": false
   },
   "outputs": {
@@ -44,7 +69,7 @@
   "email": {
     "attempted": true,
     "sent": true,
-    "paper_count": 8,
+    "paper_count": 3,
     "recipient_count": 1,
     "includes_feedback_links": true
   },
