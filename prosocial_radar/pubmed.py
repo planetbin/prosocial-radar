@@ -149,6 +149,11 @@ def _parse_article(article_elem) -> Dict:
         if value:
             keywords.append(value)
 
+    publication_types = []
+    for pub_type in art.findall(".//PublicationType"):
+        if pub_type.text:
+            publication_types.append(pub_type.text)
+
     url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
     doi_url = f"https://doi.org/{doi}" if doi else ""
 
@@ -167,6 +172,7 @@ def _parse_article(article_elem) -> Dict:
         "url": url,
         "doi_url": doi_url,
         "keywords": "; ".join(keywords),
+        "publication_types": "; ".join(_unique(publication_types)),
     }
 
 
