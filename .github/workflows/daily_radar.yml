@@ -16,6 +16,10 @@ on:
         description: "Skip AI summarization? (true/false)"
         default: "false"
         required: false
+      dry_run:
+        description: "Preview ranking only: no email, no artifacts, no commit (true/false)"
+        default: "false"
+        required: false
 
 concurrency:
   group: radar
@@ -55,16 +59,21 @@ jobs:
         run: |
           TOP="${{ github.event.inputs.top || '8' }}"
           NO_AI="${{ github.event.inputs.no_ai || 'false' }}"
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
 
           CMD="python run_radar.py --top $TOP"
           if [ "$NO_AI" = "true" ]; then
             CMD="$CMD --no-ai"
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            CMD="$CMD --no-push"
           fi
 
           echo "Running: $CMD"
           $CMD
 
       - name: Upload full candidate audit
+        if: ${{ github.event.inputs.dry_run != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: all-candidates-${{ github.run_id }}
@@ -75,6 +84,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Commit history and compact outputs
+        if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
