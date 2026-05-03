@@ -81,7 +81,7 @@ jobs:
 
           [ -f data/sent_history.json ] && git add data/sent_history.json
           [ -f data/feedback.json ] && git add data/feedback.json
-          for pattern in outputs/new_papers_*.csv outputs/new_papers_*.json outputs/digest_*.md outputs/run_report_*.json; do
+          for pattern in outputs/new_papers_*.csv outputs/new_papers_*.json outputs/run_report_*.json; do
             for file in $pattern; do
               [ -e "$file" ] && git add "$file"
             done
