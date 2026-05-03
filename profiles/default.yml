@@ -1,0 +1,129 @@
+name: default
+description: Default radar for prosocial behavior, development, empathy, cooperation, and social neuroscience.
+
+pubmed:
+  fetch_batch: 100
+  max_results: 200
+  recent_days: 90
+  max_age_days: 1095
+  request_delay: 0.5
+  query: >-
+    (prosocial[tiab] OR altruism[tiab] OR altruistic[tiab] OR empathy[tiab] OR
+    "charitable giving"[tiab] OR "social decision making"[tiab] OR
+    "trust game"[tiab] OR "dictator game"[tiab] OR "ultimatum game"[tiab] OR
+    "public goods game"[tiab] OR "cooperation"[tiab] OR "helping behavior"[tiab])
+    AND (development[tiab] OR child*[tiab] OR adolescent*[tiab] OR
+    fMRI[tiab] OR "functional MRI"[tiab] OR EEG[tiab] OR neuroimaging[tiab] OR
+    "neural"[tiab] OR "brain"[tiab])
+
+openalex:
+  polite_pool_email: research-radar@example.com
+  batch_size: 50
+
+email:
+  recipients:
+    - duo12.li@connect.polyu.hk
+
+summary:
+  max_abstract_chars: 2500
+
+target_journals:
+  - psychological science
+  - journal of personality and social psychology
+  - journal of neuroscience
+  - neuroimage
+  - social cognitive and affective neuroscience
+  - developmental science
+  - child development
+  - cerebral cortex
+  - biological psychology
+  - neuropsychologia
+  - nature human behaviour
+  - pnas
+  - proceedings of the national academy of sciences
+  - science
+  - nature
+  - current biology
+  - "journal of experimental psychology: general"
+  - cognition
+  - psychological review
+  - trends in cognitive sciences
+  - developmental psychology
+  - plos one
+  - journal of experimental child psychology
+
+filters:
+  tier_a:
+    - '\bprosocial\b'
+    - '\baltruism\b'
+    - '\baltruistic\b'
+    - '\bempathy\b'
+    - '\bempathic\b'
+    - '\bempathetic\b'
+    - '\bcharitable\b'
+    - '\bcooperation\b'
+    - '\bcooperative\b'
+    - '\bhelping behavior\b'
+    - '\bhelping behaviour\b'
+    - '\btrust game\b'
+    - '\bdictator game\b'
+    - '\bultimatum game\b'
+    - '\bpublic goods game\b'
+    - '\bsocial preference\b'
+    - '\bsocial decision'
+    - '\bprosociality\b'
+  tier_b:
+    - '\bchild\b'
+    - '\bchildren\b'
+    - '\binfant\b'
+    - '\badolescent\b'
+    - '\bdevelopment\b'
+    - '\bdevelopmental\b'
+    - '\bfmri\b'
+    - '\bfunctional mri\b'
+    - '\beeg\b'
+    - '\bneuroimaging\b'
+    - '\bneural\b'
+    - '\bbrain\b'
+    - '\bneuroscience\b'
+    - '\bbehavior\b'
+    - '\bbehaviour\b'
+    - '\bdecision[- ]making\b'
+    - '\bfairness\b'
+    - '\bmoral\b'
+    - '\bgiving\b'
+    - '\bdonat\b'
+  tag_rules:
+    altruism:
+      - '\baltruism\b'
+      - '\baltruistic\b'
+    empathy:
+      - '\bempathy\b'
+      - '\bempathic\b'
+      - '\bempathetic\b'
+    cooperation:
+      - '\bcooperation\b'
+      - '\bcooperative\b'
+    economic_games:
+      - '\btrust game\b'
+      - '\bdictator game\b'
+      - '\bultimatum game\b'
+      - '\bpublic goods\b'
+    development:
+      - '\bchild\b'
+      - '\bchildren\b'
+      - '\badolescent\b'
+      - '\bdevelopment\b'
+      - '\binfant\b'
+    neuroscience:
+      - '\bfmri\b'
+      - '\beeg\b'
+      - '\bneuroimaging\b'
+      - '\bneural\b'
+      - '\bbrain\b'
+    decision_making:
+      - '\bdecision[- ]making\b'
+      - '\bsocial decision\b'
+    moral:
+      - '\bmoral\b'
+      - '\bethics\b'
