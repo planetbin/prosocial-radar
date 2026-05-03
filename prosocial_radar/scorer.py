@@ -6,7 +6,7 @@ Computes a relevance_score (0-100) for each paper based on:
   - Citation bonus (log-scaled)                            -> up to 25 pts
   - Recency bonus (papers <=3 years old, heavily weighted) -> up to 25 pts
   - Topic breadth bonus (multiple tags hit)                -> up to 10 pts
-  - Evidence-tier adjustment                               -> -25 to +12 pts
+  - Evidence-tier adjustment                               -> -25 to +10 pts
 """
 
 import logging
