@@ -17,6 +17,7 @@ CSV_FIELDS = [
     "last_author",
     "first_author_affiliation",
     "affiliations",
+    "publication_types",
     "year",
     "journal",
     "doi",
@@ -26,6 +27,11 @@ CSV_FIELDS = [
     "selection_status",
     "filter_decision",
     "filter_reason",
+    "evidence_level",
+    "evidence_type",
+    "evidence_decision",
+    "evidence_reason",
+    "evidence_score_adjustment",
     "matched_tier_a",
     "matched_tier_b",
     "matched_tags",
@@ -35,6 +41,7 @@ CSV_FIELDS = [
     "score_citation",
     "score_recency",
     "score_breadth",
+    "score_evidence",
     "score_breakdown",
     "selection_reason",
     "feedback_rating",
@@ -116,6 +123,7 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         cites_s = str(cites) if cites is not None else "-"
         tags = p.get("topic_tags", "")
         status = p.get("selection_status", "")
+        evidence = p.get("evidence_level") or ""
         reason = (p.get("selection_reason") or p.get("filter_reason") or "")[:120]
         authors = (p.get("authors") or "")[:100]
         affiliation = (p.get("first_author_affiliation") or p.get("affiliations") or "")[:120]
@@ -125,6 +133,8 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
             print(f"       authors: {authors}")
         if affiliation:
             print(f"       affiliation: {affiliation}")
+        if evidence:
+            print(f"       evidence: {evidence}")
         print(f"       tags: {tags}")
         if reason:
             print(f"       why: {reason}")
