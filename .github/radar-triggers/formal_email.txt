@@ -1,0 +1,6 @@
+formal_email_trigger
+requested_at_beijing: 2026-05-04
+top: 8
+no_ai: false
+dry_run: false
+source_branch_merged: codex/research-profile-20260504
