@@ -5,6 +5,13 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+  # GitHub-native one-off trigger: update this marker file to start a formal run from master.
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/radar-triggers/formal_email.txt"
+
   # Manual trigger from the GitHub Actions tab
   workflow_dispatch:
     inputs:
