@@ -238,6 +238,7 @@ def _similarity_adjustment(paper: Dict, feedback: Dict[str, Dict]) -> tuple[floa
     for item in negative:
         item_journal = (item.get("journal") or "").lower().strip()
         item_tags = _tags(item.get("topic_tags") or "")
+        item_research_tags = _tags(item.get("research_use_tags") or "")
         if item_journal and paper_journal and item_journal == paper_journal:
             adjustment -= 3.0
         shared = paper_tags & item_tags
