@@ -120,14 +120,14 @@ TAG_RULES: list[tuple[str, float, list[str]]] = [
     ),
     (
         "measurement_validation",
-        6.0,
+        4.0,
         [
             r"\bvalidation\b",
             r"\bvalidat\w*\b",
-            r"\bmeasure\w*\b",
-            r"\binstrument\w*\b",
             r"\bscale\b",
-            r"\bquestionnaire\b",
+            r"\bscale development\b",
+            r"\binstrument development\b",
+            r"\bmeasure development\b",
         ],
     ),
     (
@@ -180,6 +180,11 @@ PERIPHERAL_PATTERNS = [
     r"\bnonprofit sector\b",
     r"\bvoluntary sector\b",
     r"\bwillingness to donate\b",
+    r"\bsocial capital\b",
+    r"\bhometown tax\b",
+    r"\bpublic economics\b",
+    r"\bprobit model\b",
+    r"\bordered probit\b",
 ]
 
 PSYCH_JOURNAL_PATTERNS = [
@@ -226,33 +231,39 @@ def _score_tags(text: str) -> Tuple[List[str], float]:
 
 def _peripheral_penalty(paper: Dict, tags: List[str], text: str) -> float:
     topic_tags = _existing_tags(paper)
-    has_profile_anchor = bool(
-        set(tags)
+    tagset = set(tags)
+    strong_profile_anchor = bool(
+        tagset
         & {
             "aging_prosociality",
             "age_comparison",
             "cost_mechanism",
             "familiarity_mechanism",
-            "ses_resource_mechanism",
             "value_based_decision",
             "attentional_mechanism",
             "neural_mechanism",
-            "measurement_validation",
-            "psychometrics",
             "computational_modeling_bridge",
         }
     )
+    method_anchor = bool(
+        (tagset & {"measurement_validation", "psychometrics", "picture_vignette_method", "meta_analysis"})
+        and (tagset & {"aging_prosociality", "helping_decision", "sharing", "comforting"})
+    )
     penalty = 0.0
-    if _matches(PERIPHERAL_PATTERNS, text) and not has_profile_anchor:
-        penalty += 8.0
-    if "altruism" in topic_tags and not ({"aging_prosociality", "helping_decision", "sharing", "comforting"} & set(tags)):
+    if _matches(PERIPHERAL_PATTERNS, text) and not (strong_profile_anchor or method_anchor):
+        penalty += 9.0
+    if re.search(r"\b(charitable giving|donat\w*)\b", text, re.IGNORECASE) and not (
+        tagset & {"aging_prosociality", "helping_decision", "sharing", "comforting", "neural_mechanism", "attentional_mechanism"}
+    ):
+        penalty += 5.0
+    if "altruism" in topic_tags and not ({"aging_prosociality", "helping_decision", "sharing", "comforting"} & tagset):
         penalty += 2.0
-    return min(penalty, 12.0)
+    return min(penalty, 14.0)
 
 
 def _section(tags: List[str], penalty: float) -> str:
     tagset = set(tags)
-    if {"aging_prosociality", "age_comparison"} & tagset:
+    if "aging_prosociality" in tagset:
         return "aging_lifespan"
     if {"neural_mechanism", "attentional_mechanism"} & tagset:
         return "neural_attention"
@@ -269,7 +280,7 @@ def _section(tags: List[str], penalty: float) -> str:
 
 def _takeaway(tags: List[str], paper: Dict, penalty: float) -> str:
     tagset = set(tags)
-    if {"aging_prosociality", "age_comparison"} & tagset and {"helping_decision", "sharing", "comforting"} & tagset:
+    if "aging_prosociality" in tagset and {"helping_decision", "sharing", "comforting"} & tagset:
         return "Directly relevant to aging/lifespan prosociality and behavior-specific differences in helping, sharing, or comforting."
     if {"neural_mechanism", "attentional_mechanism"} & tagset and {"helping_decision", "sharing", "comforting"} & tagset:
         return "Useful for the neural or attentional mechanism line linking perception, attention, and prosocial decisions."
