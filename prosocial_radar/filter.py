@@ -27,6 +27,15 @@ log = logging.getLogger(__name__)
 PASSED_TIERS = {"core", "mechanism_linked"}
 
 
+def _normalise_journal(value: str) -> str:
+    text = str(value or "").lower().replace("&", " and ")
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+TARGET_JOURNAL_KEYS = {_normalise_journal(journal) for journal in TARGET_JOURNALS if journal.strip()}
+
+
 def _lower_text(paper: Dict) -> str:
     return " ".join([
         paper.get("title", "") or "",
@@ -36,13 +45,18 @@ def _lower_text(paper: Dict) -> str:
 
 
 def _journal_match(paper: Dict) -> bool:
-    journal = (paper.get("journal") or "").lower()
-    return any(t in journal for t in TARGET_JOURNALS)
+    journal = _normalise_journal(paper.get("journal") or "")
+    if not journal:
+        return False
+    journal_without_the = journal[4:] if journal.startswith("the ") else journal
+    return journal in TARGET_JOURNAL_KEYS or journal_without_the in TARGET_JOURNAL_KEYS
 
 
 def _display_pattern(pattern: str) -> str:
     text = pattern.replace(r"\b", "").replace(r"\s+", " ")
-    text = text.replace(".*", " ... ").replace("\\", "")
+    text = text.replace(r"\w*", "").replace(r".*", " ... ")
+    text = text.replace("(?:", "(").replace("?", "")
+    text = text.replace("\\", "")
     text = re.sub(r"\s+", " ", text).strip(" ^$")
     return text or pattern
 
