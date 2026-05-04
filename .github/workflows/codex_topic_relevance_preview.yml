@@ -38,15 +38,23 @@ jobs:
         run: |
           set -o pipefail
           python run_radar.py --top 20 --no-ai --no-push | tee preview.log
-      - name: Print detailed Top 20 preview
+      - name: Build detailed Top 20 preview
         if: always()
         run: |
           python - <<'PY'
           import glob
           import json
 
-          def value(paper, key):
-              value = paper.get(key)
+          FIELDS = [
+              "rank", "relevance_score", "title", "authors", "first_author_affiliation",
+              "journal", "year", "pmid", "doi", "url", "doi_url", "topic_tier",
+              "matched_title_anchor_terms", "matched_core_terms", "matched_paradigm_terms",
+              "matched_mechanism_terms", "matched_context_terms", "matched_soft_exclude_terms",
+              "matched_hard_exclude_terms", "topic_tags", "keywords", "score_breakdown",
+              "selection_reason", "filter_reason",
+          ]
+
+          def clean(value):
               if value is None:
                   return ""
               return " ".join(str(value).split())
@@ -57,34 +65,44 @@ jobs:
               with open(files[-1], encoding="utf-8") as fh:
                   papers = json.load(fh)[:20]
 
-          print("=== RADAR_TOP20_DETAIL_BEGIN ===")
+          detailed = []
           for rank, paper in enumerate(papers, 1):
-              print(f"RANK: {rank}")
-              print(f"SCORE: {value(paper, 'relevance_score')}")
-              print(f"TITLE: {value(paper, 'title')}")
-              print(f"AUTHORS: {value(paper, 'authors')}")
-              print(f"FIRST_AUTHOR_AFFILIATION: {value(paper, 'first_author_affiliation')}")
-              print(f"JOURNAL: {value(paper, 'journal')}")
-              print(f"YEAR: {value(paper, 'year')}")
-              print(f"PMID: {value(paper, 'pmid')}")
-              print(f"DOI: {value(paper, 'doi')}")
-              print(f"URL: {value(paper, 'doi_url') or value(paper, 'url')}")
-              print(f"TOPIC_TIER: {value(paper, 'topic_tier')}")
-              print(f"TITLE_ANCHORS: {value(paper, 'matched_title_anchor_terms')}")
-              print(f"CORE_TERMS: {value(paper, 'matched_core_terms')}")
-              print(f"PARADIGM_TERMS: {value(paper, 'matched_paradigm_terms')}")
-              print(f"MECHANISM_TERMS: {value(paper, 'matched_mechanism_terms')}")
-              print(f"CONTEXT_TERMS: {value(paper, 'matched_context_terms')}")
-              print(f"SOFT_EXCLUDE_TERMS: {value(paper, 'matched_soft_exclude_terms')}")
-              print(f"HARD_EXCLUDE_TERMS: {value(paper, 'matched_hard_exclude_terms')}")
-              print(f"TAGS: {value(paper, 'topic_tags')}")
-              print(f"KEYWORDS: {value(paper, 'keywords')}")
-              print(f"SCORE_BREAKDOWN: {value(paper, 'score_breakdown')}")
-              print(f"SELECTION_REASON: {value(paper, 'selection_reason')}")
-              print(f"FILTER_REASON: {value(paper, 'filter_reason')}")
+              row = {field: clean(paper.get(field)) for field in FIELDS if field != "rank"}
+              row["rank"] = rank
+              row["url"] = row.get("doi_url") or row.get("url")
+              detailed.append(row)
+
+          with open("top20_detail.json", "w", encoding="utf-8") as fh:
+              json.dump(detailed, fh, ensure_ascii=False, indent=2)
+
+          with open("top20_detail.md", "w", encoding="utf-8") as fh:
+              fh.write("# Topic Relevance Preview Top 20\n\n")
+              for item in detailed:
+                  fh.write(f"## {item['rank']}. {item['title']}\n\n")
+                  for key in FIELDS:
+                      if key == "rank" or key == "title":
+                          continue
+                      label = key.replace("_", " ").title()
+                      fh.write(f"- {label}: {item.get(key, '')}\n")
+                  fh.write("\n")
+
+          print("=== RADAR_TOP20_DETAIL_BEGIN ===")
+          for item in detailed:
+              for key in FIELDS:
+                  label = key.upper()
+                  print(f"{label}: {item.get(key, '')}")
               print("---")
           print("=== RADAR_TOP20_DETAIL_END ===")
           PY
+      - name: Upload detailed preview artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: topic-relevance-top20-detail
+          path: |
+            top20_detail.json
+            top20_detail.md
+          if-no-files-found: error
       - name: Publish compact preview statuses
         if: always()
         env:
