@@ -165,7 +165,9 @@ TAG_RULES: list[tuple[str, float, list[str]]] = [
             r"\bCFA\b",
             r"\bEFA\b",
             r"\bmeasurement invariance\b",
-            r"\breliability\b",
+            r"\binternal consistency\b",
+            r"\btest[- ]retest\b",
+            r"\bcronbach\w*\b",
         ],
     ),
     ("meta_analysis", 5.0, [r"\bmeta-analysis\b", r"\bmeta analysis\b", r"\bsystematic review\b", r"\bscoping review\b"]),
@@ -207,6 +209,7 @@ LOW_VALUE_PUBLICATION_PATTERNS = [
 ]
 
 DEVELOPMENT_ONLY_PATTERNS = [
+    r"\byoung adults?\b",
     r"\badolescen\w*\b",
     r"\bchildren\b",
     r"\bchildhood\b",
@@ -217,6 +220,18 @@ ONLINE_CONTEXT_PATTERNS = [
     r"\bonline prosocial\b",
     r"\bsocial media\b",
     r"\bdigital technolog\w*\b",
+]
+
+PERSONALITY_PERIPHERAL_PATTERNS = [
+    r"\bdark triad\b",
+    r"\bdark personalit\w*\b",
+    r"\bpersonality trait\w*\b",
+]
+
+LOW_PRIORITY_METHOD_PATTERNS = [
+    r"\bqualitative study\b",
+    r"\binterview\w*\b",
+    r"\bfocus group\w*\b",
 ]
 
 PSYCH_JOURNAL_PATTERNS = [
@@ -288,7 +303,6 @@ def _peripheral_penalty(paper: Dict, tags: List[str], text: str) -> float:
             "attentional_mechanism",
             "computational_modeling_bridge",
             "picture_vignette_method",
-            "psychometrics",
             "meta_analysis",
         }
     )
@@ -301,13 +315,17 @@ def _peripheral_penalty(paper: Dict, tags: List[str], text: str) -> float:
         penalty += 4.0
     if _matches(ONLINE_CONTEXT_PATTERNS, text) and not mechanism_or_method_anchor:
         penalty += 3.0
+    if _matches(PERSONALITY_PERIPHERAL_PATTERNS, text) and not mechanism_or_method_anchor:
+        penalty += 4.0
+    if _matches(LOW_PRIORITY_METHOD_PATTERNS, text) and not mechanism_or_method_anchor:
+        penalty += 3.0
     if re.search(r"\b(charitable giving|donat\w*)\b", text, re.IGNORECASE) and not (
         tagset & {"aging_prosociality", "helping_decision", "sharing", "comforting", "neural_mechanism", "attentional_mechanism"}
     ):
         penalty += 5.0
     if "altruism" in topic_tags and not ({"aging_prosociality", "helping_decision", "sharing", "comforting"} & tagset):
         penalty += 2.0
-    return min(penalty, 20.0)
+    return min(penalty, 22.0)
 
 
 def _section(tags: List[str], penalty: float) -> str:
