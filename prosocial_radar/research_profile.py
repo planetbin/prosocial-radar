@@ -31,15 +31,24 @@ TAG_RULES: list[tuple[str, float, list[str]]] = [
         "age_comparison",
         4.0,
         [
-            r"\byounger and older\b",
-            r"\byoung and older\b",
-            r"\bage difference\w*\b",
-            r"\bage-related\b",
-            r"\bage group\w*\b",
-            r"\bage comparison\w*\b",
+            r"\byounger adults?\b.{0,60}\bolder adults?\b",
+            r"\bolder adults?\b.{0,60}\byounger adults?\b",
+            r"\byoung and older adults?\b",
+            r"\byounger and older adults?\b",
+            r"\badult age difference\w*\b",
+            r"\bage differences? between younger and older adults?\b",
         ],
     ),
-    ("helping_decision", 5.0, [r"\bhelping\b", r"\bhelping behavior\b", r"\bdecid\w* to help\b", r"\bprosocial decision\w*\b"]),
+    (
+        "helping_decision",
+        5.0,
+        [
+            r"\bhelping\b",
+            r"\bhelping behavior\b",
+            r"\bdecid\w* to help\b",
+            r"\bprosocial decision\w*\b",
+        ],
+    ),
     ("sharing", 4.0, [r"\bsharing\b", r"\bresource sharing\b", r"\bshare resources\b"]),
     ("comforting", 4.0, [r"\bcomforting\b", r"\bcomfort\b", r"\bemotional support\b", r"\bconsole\w*\b"]),
     (
@@ -68,14 +77,15 @@ TAG_RULES: list[tuple[str, float, list[str]]] = [
     ),
     (
         "ses_resource_mechanism",
-        4.0,
+        3.0,
         [
             r"\bsocioeconomic\b",
+            r"\bsocioeconomic status\b",
             r"\bSES\b",
             r"\bincome\b",
             r"\bwealth\b",
-            r"\bresource\w*\b",
-            r"\bfinancial\b",
+            r"\bfinancial strain\b",
+            r"\bresource inequality\b",
         ],
     ),
     (
@@ -122,12 +132,15 @@ TAG_RULES: list[tuple[str, float, list[str]]] = [
         "measurement_validation",
         4.0,
         [
-            r"\bvalidation\b",
-            r"\bvalidat\w*\b",
-            r"\bscale\b",
+            r"\bpsychometric validation\b",
+            r"\bscale validation\b",
+            r"\bmeasure validation\b",
+            r"\binstrument validation\b",
+            r"\bvalidated scale\b",
             r"\bscale development\b",
             r"\binstrument development\b",
             r"\bmeasure development\b",
+            r"\bmeasurement invariance\b",
         ],
     ),
     (
@@ -187,6 +200,25 @@ PERIPHERAL_PATTERNS = [
     r"\bordered probit\b",
 ]
 
+LOW_VALUE_PUBLICATION_PATTERNS = [
+    r"\beditorial\b",
+    r"\bcommentary\b",
+    r"\bprotocol\b",
+]
+
+DEVELOPMENT_ONLY_PATTERNS = [
+    r"\badolescen\w*\b",
+    r"\bchildren\b",
+    r"\bchildhood\b",
+    r"\byouth\b",
+]
+
+ONLINE_CONTEXT_PATTERNS = [
+    r"\bonline prosocial\b",
+    r"\bsocial media\b",
+    r"\bdigital technolog\w*\b",
+]
+
 PSYCH_JOURNAL_PATTERNS = [
     r"psycholog",
     r"gerontolog",
@@ -236,7 +268,6 @@ def _peripheral_penalty(paper: Dict, tags: List[str], text: str) -> float:
         tagset
         & {
             "aging_prosociality",
-            "age_comparison",
             "cost_mechanism",
             "familiarity_mechanism",
             "value_based_decision",
@@ -249,16 +280,34 @@ def _peripheral_penalty(paper: Dict, tags: List[str], text: str) -> float:
         (tagset & {"measurement_validation", "psychometrics", "picture_vignette_method", "meta_analysis"})
         and (tagset & {"aging_prosociality", "helping_decision", "sharing", "comforting"})
     )
+    mechanism_or_method_anchor = bool(
+        tagset
+        & {
+            "aging_prosociality",
+            "neural_mechanism",
+            "attentional_mechanism",
+            "computational_modeling_bridge",
+            "picture_vignette_method",
+            "psychometrics",
+            "meta_analysis",
+        }
+    )
     penalty = 0.0
     if _matches(PERIPHERAL_PATTERNS, text) and not (strong_profile_anchor or method_anchor):
-        penalty += 9.0
+        penalty += 10.0
+    if _matches(LOW_VALUE_PUBLICATION_PATTERNS, text):
+        penalty += 10.0
+    if _matches(DEVELOPMENT_ONLY_PATTERNS, text) and not mechanism_or_method_anchor:
+        penalty += 4.0
+    if _matches(ONLINE_CONTEXT_PATTERNS, text) and not mechanism_or_method_anchor:
+        penalty += 3.0
     if re.search(r"\b(charitable giving|donat\w*)\b", text, re.IGNORECASE) and not (
         tagset & {"aging_prosociality", "helping_decision", "sharing", "comforting", "neural_mechanism", "attentional_mechanism"}
     ):
         penalty += 5.0
     if "altruism" in topic_tags and not ({"aging_prosociality", "helping_decision", "sharing", "comforting"} & tagset):
         penalty += 2.0
-    return min(penalty, 14.0)
+    return min(penalty, 20.0)
 
 
 def _section(tags: List[str], penalty: float) -> str:
