@@ -28,16 +28,14 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -q -r requirements.txt
       - name: Compile check
-        run: python -m compileall prosocial_radar run_radar.py
+        run: python -m compileall -q prosocial_radar run_radar.py
       - name: Run topic relevance preview only
         env:
           GITHUB_TOKEN: ${{ github.token }}
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
-        run: |
-          set -o pipefail
-          python run_radar.py --top 20 --no-ai --no-push | tee preview.log
+        run: python run_radar.py --top 20 --no-ai --no-push > preview.log 2>&1
       - name: Build detailed Top 20 preview
         if: always()
         run: |
