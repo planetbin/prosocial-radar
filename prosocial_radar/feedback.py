@@ -43,8 +43,12 @@ def _normalise_doi(doi: str | None) -> str:
     return (doi or "").replace("https://doi.org/", "").lower().strip()
 
 
+def _source_id(paper: Dict) -> str:
+    return str(paper.get("source_id") or paper.get("openalex_id") or "").strip()
+
+
 def paper_key(paper: Dict) -> str:
-    return str(paper.get("pmid") or _normalise_doi(paper.get("doi")) or "").strip()
+    return str(paper.get("pmid") or _normalise_doi(paper.get("doi")) or _source_id(paper) or "").strip()
 
 
 def load_feedback() -> Dict[str, Dict]:
@@ -71,17 +75,22 @@ def feedback_issue_url(paper: Dict, rating: str) -> str:
     safe_rating = rating if rating in RATINGS else "maybe"
     pmid = str(paper.get("pmid") or "").strip()
     doi = _normalise_doi(paper.get("doi"))
+    source = str(paper.get("source") or "").strip()
+    source_id = _source_id(paper)
     title = str(paper.get("title") or "").strip()
     journal = str(paper.get("journal") or "").strip()
     tags = str(paper.get("topic_tags") or "").strip()
     score = str(paper.get("relevance_score") or "").strip()
 
-    issue_title = f"[radar-feedback] {safe_rating} PMID:{pmid or 'none'}"
+    key_label = pmid or doi or source_id or "none"
+    issue_title = f"[radar-feedback] {safe_rating} ID:{key_label}"
     body = "\n".join([
         "radar_feedback: true",
         f"rating: {safe_rating}",
         f"pmid: {pmid}",
         f"doi: {doi}",
+        f"source: {source}",
+        f"source_id: {source_id}",
         f"title: {title}",
         f"journal: {journal}",
         f"topic_tags: {tags}",
@@ -106,12 +115,13 @@ def attach_feedback_links(papers: Iterable[Dict]) -> None:
 
 def _parse_feedback_body(body: str) -> Dict[str, str]:
     fields: Dict[str, str] = {}
+    allowed = {"rating", "pmid", "doi", "source", "source_id", "title", "journal", "topic_tags", "score"}
     for line in (body or "").splitlines():
         if ":" not in line:
             continue
         key, value = line.split(":", 1)
         key = key.strip().lower().replace("-", "_")
-        if key in {"rating", "pmid", "doi", "title", "journal", "topic_tags", "score"}:
+        if key in allowed:
             fields[key] = value.strip()
     return fields
 
@@ -131,7 +141,8 @@ def _issue_to_feedback(issue: Dict) -> Dict | None:
 
     pmid = fields.get("pmid", "").strip()
     doi = _normalise_doi(fields.get("doi"))
-    key = pmid or doi
+    source_id = fields.get("source_id", "").strip()
+    key = pmid or doi or source_id
     if not key:
         return None
 
@@ -139,6 +150,8 @@ def _issue_to_feedback(issue: Dict) -> Dict | None:
         "rating": rating,
         "pmid": pmid,
         "doi": doi,
+        "source": fields.get("source", ""),
+        "source_id": source_id,
         "title": fields.get("title", ""),
         "journal": fields.get("journal", ""),
         "topic_tags": fields.get("topic_tags", ""),
@@ -178,7 +191,7 @@ def sync_feedback_from_github() -> Dict:
         item = _issue_to_feedback(issue)
         if not item:
             continue
-        key = item.get("pmid") or item.get("doi")
+        key = item.get("pmid") or item.get("doi") or item.get("source_id")
         if key:
             feedback[key] = item
             imported += 1
@@ -243,7 +256,8 @@ def apply_feedback_adjustments(papers: List[Dict]) -> List[Dict]:
     for paper in papers:
         key = paper_key(paper)
         doi = _normalise_doi(paper.get("doi"))
-        exact = feedback.get(key) or (feedback.get(doi) if doi else None)
+        source_id = _source_id(paper)
+        exact = feedback.get(key) or (feedback.get(doi) if doi else None) or (feedback.get(source_id) if source_id else None)
         adjustment = 0.0
         reasons: List[str] = []
         rating = ""
