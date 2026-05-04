@@ -60,6 +60,12 @@ def _as_list(value: Any, default: Iterable[str]) -> list[str]:
     return [str(item) for item in value]
 
 
+def _as_dict_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
 def _env_list(name: str, default: Iterable[str]) -> list[str]:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -93,10 +99,21 @@ MAX_AGE_DAYS = _env_int("RADAR_MAX_AGE_DAYS", _get("pubmed.max_age_days", 1095))
 REQUEST_DELAY = _env_float("RADAR_REQUEST_DELAY", _get("pubmed.request_delay", 1.0))
 PUBMED_QUERY = _env_str("PUBMED_QUERY", str(_get("pubmed.query", DEFAULT_PUBMED_QUERY)))
 
-# OpenAlex API
+# Candidate source controls. RADAR_SOURCES accepts comma-separated names such as "pubmed,openalex".
+SOURCE_ENABLED = [
+    item.lower().strip()
+    for item in _env_list("RADAR_SOURCES", _as_list(_get("sources.enabled"), ["pubmed"]))
+    if item.strip()
+]
+
+# OpenAlex API: citation enrichment plus optional candidate-source search.
 OPENALEX_BASE = "https://api.openalex.org/works"
 OA_EMAIL = _env_str("OPENALEX_EMAIL", str(_get("openalex.polite_pool_email", "research-radar@example.com")))
 OA_BATCH = _env_int("OPENALEX_BATCH", _get("openalex.batch_size", 50))
+OPENALEX_SOURCE_MAX_RESULTS = _env_int("OPENALEX_SOURCE_MAX_RESULTS", _get("openalex.source_max_results", 80))
+OPENALEX_SOURCE_BATCH = _env_int("OPENALEX_SOURCE_BATCH", _get("openalex.source_batch_size", 50))
+OPENALEX_SOURCE_SEARCHES = _as_dict_list(_get("openalex.searches", []))
+OPENALEX_SOURCE_SORTS = _as_list(_get("openalex.source_sorts"), ["relevance_score:desc", "publication_date:desc"])
 
 # Delivery
 EMAIL_RECIPIENTS = _env_list(
