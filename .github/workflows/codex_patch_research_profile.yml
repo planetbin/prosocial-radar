@@ -1,0 +1,48 @@
+name: Codex Patch Research Profile Tuning
+
+on:
+  push:
+    branches:
+      - codex/research-profile-20260504
+    paths:
+      - .github/workflows/codex_patch_research_profile.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/research-profile-20260504
+      - name: Patch feedback similarity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("prosocial_radar/feedback.py")
+          text = path.read_text(encoding="utf-8")
+          old = '''    for item in negative:\n        item_journal = (item.get("journal") or "").lower().strip()\n        item_tags = _tags(item.get("topic_tags") or "")\n        if item_journal and paper_journal and item_journal == paper_journal:\n'''
+          new = '''    for item in negative:\n        item_journal = (item.get("journal") or "").lower().strip()\n        item_tags = _tags(item.get("topic_tags") or "")\n        item_research_tags = _tags(item.get("research_use_tags") or "")\n        if item_journal and paper_journal and item_journal == paper_journal:\n'''
+          if new not in text:
+              if old not in text:
+                  raise RuntimeError("negative feedback loop pattern not found")
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+      - name: Compile check
+        run: python -m compileall -q prosocial_radar run_radar.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prosocial_radar/feedback.py
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Fix research-profile feedback similarity"
+            git push origin HEAD:codex/research-profile-20260504
+          fi
