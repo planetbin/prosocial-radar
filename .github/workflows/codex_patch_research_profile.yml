@@ -19,19 +19,115 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: codex/research-profile-20260504
-      - name: Patch feedback similarity
+      - name: Tune research-profile ranking rules
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path("prosocial_radar/feedback.py")
-          text = path.read_text(encoding="utf-8")
-          old = '''    for item in negative:\n        item_journal = (item.get("journal") or "").lower().strip()\n        item_tags = _tags(item.get("topic_tags") or "")\n        if item_journal and paper_journal and item_journal == paper_journal:\n'''
-          new = '''    for item in negative:\n        item_journal = (item.get("journal") or "").lower().strip()\n        item_tags = _tags(item.get("topic_tags") or "")\n        item_research_tags = _tags(item.get("research_use_tags") or "")\n        if item_journal and paper_journal and item_journal == paper_journal:\n'''
-          if new not in text:
-              if old not in text:
-                  raise RuntimeError("negative feedback loop pattern not found")
-              text = text.replace(old, new, 1)
-          path.write_text(text, encoding="utf-8")
+
+          rp = Path("prosocial_radar/research_profile.py")
+          text = rp.read_text(encoding="utf-8")
+          text = text.replace('("measurement_validation", 6.0,', '("measurement_validation", 4.0,')
+          for line in [
+              '            r"\\bmeasure\\w*\\b",\n',
+              '            r"\\binstrument\\w*\\b",\n',
+              '            r"\\bquestionnaire\\b",\n',
+          ]:
+              text = text.replace(line, "")
+          marker = '            r"\\bscale\\b",\n'
+          addition = (
+              '            r"\\bscale development\\b",\n'
+              '            r"\\binstrument development\\b",\n'
+              '            r"\\bmeasure development\\b",\n'
+          )
+          if addition.strip() not in text:
+              text = text.replace(marker, marker + addition, 1)
+
+          if 'r"\\bsocial capital\\b"' not in text:
+              text = text.replace(
+                  '    r"\\bwillingness to donate\\b",\n]',
+                  '    r"\\bwillingness to donate\\b",\n'
+                  '    r"\\bsocial capital\\b",\n'
+                  '    r"\\bhometown tax\\b",\n'
+                  '    r"\\bpublic economics\\b",\n'
+                  '    r"\\bprobit model\\b",\n'
+                  '    r"\\bordered probit\\b",\n'
+                  ']',
+              )
+
+          old_func = '''def _peripheral_penalty(paper: Dict, tags: List[str], text: str) -> float:
+    topic_tags = _existing_tags(paper)
+    has_profile_anchor = bool(
+        set(tags)
+        & {
+            "aging_prosociality",
+            "age_comparison",
+            "cost_mechanism",
+            "familiarity_mechanism",
+            "ses_resource_mechanism",
+            "value_based_decision",
+            "attentional_mechanism",
+            "neural_mechanism",
+            "measurement_validation",
+            "psychometrics",
+            "computational_modeling_bridge",
+        }
+    )
+    penalty = 0.0
+    if _matches(PERIPHERAL_PATTERNS, text) and not has_profile_anchor:
+        penalty += 8.0
+    if "altruism" in topic_tags and not ({"aging_prosociality", "helping_decision", "sharing", "comforting"} & set(tags)):
+        penalty += 2.0
+    return min(penalty, 12.0)
+'''
+          new_func = '''def _peripheral_penalty(paper: Dict, tags: List[str], text: str) -> float:
+    topic_tags = _existing_tags(paper)
+    tagset = set(tags)
+    strong_profile_anchor = bool(
+        tagset
+        & {
+            "aging_prosociality",
+            "age_comparison",
+            "cost_mechanism",
+            "familiarity_mechanism",
+            "value_based_decision",
+            "attentional_mechanism",
+            "neural_mechanism",
+            "computational_modeling_bridge",
+        }
+    )
+    method_anchor = bool(
+        (tagset & {"measurement_validation", "psychometrics", "picture_vignette_method", "meta_analysis"})
+        and (tagset & {"aging_prosociality", "helping_decision", "sharing", "comforting"})
+    )
+    penalty = 0.0
+    if _matches(PERIPHERAL_PATTERNS, text) and not (strong_profile_anchor or method_anchor):
+        penalty += 9.0
+    if re.search(r"\\b(charitable giving|donat\\w*)\\b", text, re.IGNORECASE) and not (
+        tagset & {"aging_prosociality", "helping_decision", "sharing", "comforting", "neural_mechanism", "attentional_mechanism"}
+    ):
+        penalty += 5.0
+    if "altruism" in topic_tags and not ({"aging_prosociality", "helping_decision", "sharing", "comforting"} & tagset):
+        penalty += 2.0
+    return min(penalty, 14.0)
+'''
+          if old_func not in text:
+              raise RuntimeError("peripheral penalty function pattern not found")
+          text = text.replace(old_func, new_func, 1)
+
+          text = text.replace(
+              '    if {"aging_prosociality", "age_comparison"} & tagset:\n        return "aging_lifespan"',
+              '    if "aging_prosociality" in tagset:\n        return "aging_lifespan"',
+          )
+          text = text.replace(
+              '    if {"aging_prosociality", "age_comparison"} & tagset and {"helping_decision", "sharing", "comforting"} & tagset:\n        return "Directly relevant to aging/lifespan prosociality and behavior-specific differences in helping, sharing, or comforting."',
+              '    if "aging_prosociality" in tagset and {"helping_decision", "sharing", "comforting"} & tagset:\n        return "Directly relevant to aging/lifespan prosociality and behavior-specific differences in helping, sharing, or comforting."',
+          )
+          rp.write_text(text, encoding="utf-8")
+
+          profile = Path("profiles/default.yml")
+          yml = profile.read_text(encoding="utf-8")
+          yml = yml.replace('  - scientific reports\n', '')
+          profile.write_text(yml, encoding="utf-8")
           PY
       - name: Compile check
         run: python -m compileall -q prosocial_radar run_radar.py
@@ -39,10 +135,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prosocial_radar/feedback.py
+          git add prosocial_radar/research_profile.py profiles/default.yml
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Fix research-profile feedback similarity"
+            git commit -m "Tune research-profile ranking rules"
             git push origin HEAD:codex/research-profile-20260504
           fi
