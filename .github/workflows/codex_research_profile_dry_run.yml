@@ -1,0 +1,193 @@
+name: Codex Research Profile Dry Run
+
+on:
+  push:
+    branches:
+      - codex/research-profile-20260504
+    paths:
+      - .github/workflows/codex_research_profile_dry_run.yml
+      - prosocial_radar/**
+      - profiles/default.yml
+      - run_radar.py
+
+concurrency:
+  group: codex-research-profile-dry-run
+  cancel-in-progress: true
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      issues: read
+      statuses: write
+    steps:
+      - name: Publish run URL status
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import os, requests
+          repo = os.environ["GITHUB_REPOSITORY"]
+          sha = os.environ["GITHUB_SHA"]
+          token = os.environ["GITHUB_TOKEN"]
+          run_url = f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          requests.post(
+              f"https://api.github.com/repos/{repo}/statuses/{sha}",
+              headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"},
+              json={"state": "pending", "context": "research-profile-dry-run/run", "description": "research-profile dry run started", "target_url": run_url},
+              timeout=20,
+          ).raise_for_status()
+          PY
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/research-profile-20260504
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -q -r requirements.txt
+      - name: Compile check
+        id: compile
+        continue-on-error: true
+        run: python -m compileall -q prosocial_radar run_radar.py
+      - name: Run radar without email or AI summaries
+        id: radar
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+          RADAR_SOURCES: pubmed,openalex
+        run: python run_radar.py --top 20 --no-ai --no-push --max 60 > dry_run.log 2>&1
+      - name: Build research-profile details
+        if: always()
+        run: |
+          python - <<'PY'
+          import glob
+          import json
+          from collections import Counter
+          from prosocial_radar.push import render_email
+
+          def clean(value):
+              if value is None:
+                  return ""
+              return " ".join(str(value).split())
+
+          files = sorted(glob.glob("outputs/new_papers_*.json"))
+          report_files = sorted(glob.glob("outputs/run_report_*.json"))
+          papers = []
+          if files:
+              with open(files[-1], encoding="utf-8") as fh:
+                  papers = json.load(fh)
+          report = {}
+          if report_files:
+              with open(report_files[-1], encoding="utf-8") as fh:
+                  report = json.load(fh)
+
+          top = papers[:20]
+          section_counts = Counter(clean(p.get("email_section") or "unknown") for p in papers)
+          research_tag_counts = Counter()
+          topic_tag_counts = Counter()
+          for paper in papers:
+              for tag in clean(paper.get("research_use_tags")).split(";"):
+                  tag = tag.strip()
+                  if tag:
+                      research_tag_counts[tag] += 1
+              for tag in clean(paper.get("topic_tags")).split(";"):
+                  tag = tag.strip()
+                  if tag:
+                      topic_tag_counts[tag] += 1
+
+          detail = {
+              "run_report": report,
+              "new_count": len(papers),
+              "section_counts": dict(section_counts),
+              "research_tag_counts": dict(research_tag_counts),
+              "topic_tag_counts": dict(topic_tag_counts),
+              "top20": top,
+          }
+          with open("research_profile_dry_run_detail.json", "w", encoding="utf-8") as fh:
+              json.dump(detail, fh, ensure_ascii=False, indent=2)
+          with open("research_profile_email_sample.html", "w", encoding="utf-8") as fh:
+              fh.write(render_email(top, (report.get("stages") or {}).get("after_filter", len(papers))))
+
+          print("=== RESEARCH_PROFILE_DRY_RUN_BEGIN ===")
+          print("SECTIONS:", dict(section_counts))
+          print("RESEARCH_TAGS:", dict(research_tag_counts))
+          print("TOPIC_TAGS:", dict(topic_tag_counts))
+          print("STAGES:", json.dumps(report.get("stages", {}), ensure_ascii=False, sort_keys=True))
+          print("=== RESEARCH_PROFILE_TOP20_BEGIN ===")
+          for idx, paper in enumerate(top, 1):
+              print(f"RANK: {idx}")
+              for key in [
+                  "relevance_score", "research_alignment_score", "score_research_alignment", "email_section",
+                  "source", "source_query", "title", "authors", "first_author_affiliation",
+                  "journal", "year", "pmid", "doi", "url", "topic_tier", "topic_tags",
+                  "research_use_tags", "matched_title_anchor_terms", "matched_core_terms",
+                  "matched_paradigm_terms", "matched_mechanism_terms", "matched_context_terms",
+                  "keywords", "research_takeaway", "selection_reason",
+              ]:
+                  print(f"{key.upper()}: {clean(paper.get(key))}")
+              print("---")
+          print("=== RESEARCH_PROFILE_TOP20_END ===")
+          print("=== RESEARCH_PROFILE_DRY_RUN_END ===")
+          PY
+      - name: Upload dry-run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-profile-dry-run-detail
+          path: |
+            dry_run.log
+            research_profile_dry_run_detail.json
+            research_profile_email_sample.html
+          if-no-files-found: warn
+      - name: Publish dry-run statuses
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          COMPILE_OUTCOME: ${{ steps.compile.outcome }}
+          RADAR_OUTCOME: ${{ steps.radar.outcome }}
+        run: |
+          python - <<'PY'
+          import json, os, requests, sys
+          repo = os.environ["GITHUB_REPOSITORY"]
+          sha = os.environ["GITHUB_SHA"]
+          token = os.environ["GITHUB_TOKEN"]
+          run_url = f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          url = f"https://api.github.com/repos/{repo}/statuses/{sha}"
+          headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+
+          def compact(text, limit=130):
+              return " ".join(str(text or "").split())[:limit]
+
+          def post(context, description, state):
+              requests.post(url, headers=headers, json={"state": state, "context": context[:250], "description": compact(description), "target_url": run_url}, timeout=20).raise_for_status()
+
+          try:
+              detail = json.load(open("research_profile_dry_run_detail.json", encoding="utf-8"))
+          except Exception:
+              detail = {}
+          stages = ((detail.get("run_report") or {}).get("stages") or {}) if isinstance(detail, dict) else {}
+          counts = ((stages.get("source_fetch") or {}).get("counts") or {}) if isinstance(stages, dict) else {}
+          state = "success" if os.environ.get("COMPILE_OUTCOME") == "success" and os.environ.get("RADAR_OUTCOME") == "success" else "failure"
+          meta = f"raw={counts.get('raw_total','?')} unique={stages.get('unique_after_dedup','?')} passed={stages.get('after_filter','?')} new={stages.get('new_after_history','?')}"
+          post("research-profile-dry-run/meta", meta, state)
+          post("research-profile-dry-run/sections", detail.get("section_counts", {}), state)
+          post("research-profile-dry-run/research-tags", detail.get("research_tag_counts", {}), state)
+          for idx, paper in enumerate((detail.get("top20") or [])[:10], 1):
+              title = compact(paper.get("title"), 65)
+              desc = f"fit={paper.get('research_alignment_score','?')} | {paper.get('email_section','')} | {paper.get('research_use_tags','')}"
+              post(f"research-profile-dry-run/top-{idx:02d} {paper.get('relevance_score','?')} {title}", desc, state)
+          post("research-profile-dry-run/run", "research-profile dry run finished", state)
+          if state != "success":
+              try:
+                  print(open("dry_run.log", encoding="utf-8").read()[-5000:])
+              except Exception:
+                  pass
+              sys.exit(1)
+          PY
