@@ -38,6 +38,53 @@ jobs:
         run: |
           set -o pipefail
           python run_radar.py --top 20 --no-ai --no-push | tee preview.log
+      - name: Print detailed Top 20 preview
+        if: always()
+        run: |
+          python - <<'PY'
+          import glob
+          import json
+
+          def value(paper, key):
+              value = paper.get(key)
+              if value is None:
+                  return ""
+              return " ".join(str(value).split())
+
+          files = sorted(glob.glob("outputs/new_papers_*.json"))
+          papers = []
+          if files:
+              with open(files[-1], encoding="utf-8") as fh:
+                  papers = json.load(fh)[:20]
+
+          print("=== RADAR_TOP20_DETAIL_BEGIN ===")
+          for rank, paper in enumerate(papers, 1):
+              print(f"RANK: {rank}")
+              print(f"SCORE: {value(paper, 'relevance_score')}")
+              print(f"TITLE: {value(paper, 'title')}")
+              print(f"AUTHORS: {value(paper, 'authors')}")
+              print(f"FIRST_AUTHOR_AFFILIATION: {value(paper, 'first_author_affiliation')}")
+              print(f"JOURNAL: {value(paper, 'journal')}")
+              print(f"YEAR: {value(paper, 'year')}")
+              print(f"PMID: {value(paper, 'pmid')}")
+              print(f"DOI: {value(paper, 'doi')}")
+              print(f"URL: {value(paper, 'doi_url') or value(paper, 'url')}")
+              print(f"TOPIC_TIER: {value(paper, 'topic_tier')}")
+              print(f"TITLE_ANCHORS: {value(paper, 'matched_title_anchor_terms')}")
+              print(f"CORE_TERMS: {value(paper, 'matched_core_terms')}")
+              print(f"PARADIGM_TERMS: {value(paper, 'matched_paradigm_terms')}")
+              print(f"MECHANISM_TERMS: {value(paper, 'matched_mechanism_terms')}")
+              print(f"CONTEXT_TERMS: {value(paper, 'matched_context_terms')}")
+              print(f"SOFT_EXCLUDE_TERMS: {value(paper, 'matched_soft_exclude_terms')}")
+              print(f"HARD_EXCLUDE_TERMS: {value(paper, 'matched_hard_exclude_terms')}")
+              print(f"TAGS: {value(paper, 'topic_tags')}")
+              print(f"KEYWORDS: {value(paper, 'keywords')}")
+              print(f"SCORE_BREAKDOWN: {value(paper, 'score_breakdown')}")
+              print(f"SELECTION_REASON: {value(paper, 'selection_reason')}")
+              print(f"FILTER_REASON: {value(paper, 'filter_reason')}")
+              print("---")
+          print("=== RADAR_TOP20_DETAIL_END ===")
+          PY
       - name: Publish compact preview statuses
         if: always()
         env:
@@ -48,6 +95,7 @@ jobs:
           repo = os.environ["GITHUB_REPOSITORY"]
           sha = os.environ["GITHUB_SHA"]
           token = os.environ["GITHUB_TOKEN"]
+          run_url = f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
           url = f"https://api.github.com/repos/{repo}/statuses/{sha}"
           headers = {
               "Authorization": f"Bearer {token}",
@@ -64,7 +112,12 @@ jobs:
               return text[:limit]
 
           def status(context, description="ok", state="success"):
-              payload = {"state": state, "context": context[:250], "description": compact(description, 130)}
+              payload = {
+                  "state": state,
+                  "context": context[:250],
+                  "description": compact(description, 130),
+                  "target_url": run_url,
+              }
               response = requests.post(url, headers=headers, json=payload, timeout=20)
               response.raise_for_status()
 
