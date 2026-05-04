@@ -43,7 +43,7 @@ jobs:
           import glob
           import json
 
-          FIELDS = [
+          fields = [
               "rank", "relevance_score", "title", "authors", "first_author_affiliation",
               "journal", "year", "pmid", "doi", "url", "doi_url", "topic_tier",
               "matched_title_anchor_terms", "matched_core_terms", "matched_paradigm_terms",
@@ -65,7 +65,7 @@ jobs:
 
           detailed = []
           for rank, paper in enumerate(papers, 1):
-              row = {field: clean(paper.get(field)) for field in FIELDS if field != "rank"}
+              row = {field: clean(paper.get(field)) for field in fields if field != "rank"}
               row["rank"] = rank
               row["url"] = row.get("doi_url") or row.get("url")
               detailed.append(row)
@@ -77,20 +77,12 @@ jobs:
               fh.write("# Topic Relevance Preview Top 20\n\n")
               for item in detailed:
                   fh.write(f"## {item['rank']}. {item['title']}\n\n")
-                  for key in FIELDS:
+                  for key in fields:
                       if key == "rank" or key == "title":
                           continue
                       label = key.replace("_", " ").title()
                       fh.write(f"- {label}: {item.get(key, '')}\n")
                   fh.write("\n")
-
-          print("=== RADAR_TOP20_DETAIL_BEGIN ===")
-          for item in detailed:
-              for key in FIELDS:
-                  label = key.upper()
-                  print(f"{label}: {item.get(key, '')}")
-              print("---")
-          print("=== RADAR_TOP20_DETAIL_END ===")
           PY
       - name: Upload detailed preview artifact
         if: always()
@@ -196,4 +188,62 @@ jobs:
               journal = compact(item.get("journal", ""), 55)
               context = f"radar-topic/{rank:02d} s={score} {title} | {tier} | {journal}"
               status(context, compact(item.get("why", "ranked paper"), 130))
+          PY
+
+  detail:
+    needs: preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: 01-05
+            start: 1
+            end: 5
+          - label: 06-10
+            start: 6
+            end: 10
+          - label: 11-15
+            start: 11
+            end: 15
+          - label: 16-20
+            start: 16
+            end: 20
+    name: detail-${{ matrix.label }}
+    steps:
+      - name: Download detailed preview artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: topic-relevance-top20-detail
+      - name: Print detailed slice
+        env:
+          START_RANK: ${{ matrix.start }}
+          END_RANK: ${{ matrix.end }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          fields = [
+              "rank", "relevance_score", "title", "authors", "first_author_affiliation",
+              "journal", "year", "pmid", "doi", "url", "topic_tier",
+              "matched_title_anchor_terms", "matched_core_terms", "matched_paradigm_terms",
+              "matched_mechanism_terms", "matched_context_terms", "matched_soft_exclude_terms",
+              "matched_hard_exclude_terms", "topic_tags", "keywords", "score_breakdown",
+              "selection_reason", "filter_reason",
+          ]
+          start = int(os.environ["START_RANK"])
+          end = int(os.environ["END_RANK"])
+          with open("top20_detail.json", encoding="utf-8") as fh:
+              items = json.load(fh)
+          print(f"=== RADAR_TOP20_DETAIL_{start:02d}_{end:02d}_BEGIN ===")
+          for item in items:
+              rank = int(item.get("rank", 0))
+              if rank < start or rank > end:
+                  continue
+              for key in fields:
+                  print(f"{key.upper()}: {item.get(key, '')}")
+              print("---")
+          print(f"=== RADAR_TOP20_DETAIL_{start:02d}_{end:02d}_END ===")
           PY
