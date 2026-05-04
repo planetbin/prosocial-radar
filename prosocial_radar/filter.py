@@ -27,6 +27,15 @@ log = logging.getLogger(__name__)
 PASSED_TIERS = {"core", "mechanism_linked"}
 
 
+def _normalise_journal(value: str) -> str:
+    text = str(value or "").lower().replace("&", " and ")
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+TARGET_JOURNAL_KEYS = {_normalise_journal(journal) for journal in TARGET_JOURNALS if journal.strip()}
+
+
 def _lower_text(paper: Dict) -> str:
     return " ".join([
         paper.get("title", "") or "",
@@ -36,13 +45,18 @@ def _lower_text(paper: Dict) -> str:
 
 
 def _journal_match(paper: Dict) -> bool:
-    journal = (paper.get("journal") or "").lower()
-    return any(t in journal for t in TARGET_JOURNALS)
+    journal = _normalise_journal(paper.get("journal") or "")
+    if not journal:
+        return False
+    journal_without_the = journal[4:] if journal.startswith("the ") else journal
+    return journal in TARGET_JOURNAL_KEYS or journal_without_the in TARGET_JOURNAL_KEYS
 
 
 def _display_pattern(pattern: str) -> str:
     text = pattern.replace(r"\b", "").replace(r"\s+", " ")
-    text = text.replace(".*", " ... ").replace("\\", "")
+    text = text.replace(r"\w*", "").replace(r".*", " ... ")
+    text = text.replace("(?:", "(").replace("?", "")
+    text = text.replace("\\", "")
     text = re.sub(r"\s+", " ", text).strip(" ^$")
     return text or pattern
 
@@ -197,20 +211,40 @@ def annotate_filter_decision(paper: Dict) -> Dict:
     return paper
 
 
+def _title_key(paper: Dict) -> str:
+    title = re.sub(r"\W+", " ", (paper.get("title") or "").lower()).strip()
+    if len(title) < 20:
+        return ""
+    year = str(paper.get("year") or "")[:4]
+    return f"{title}|{year}"
+
+
 def deduplicate(papers: List[Dict]) -> List[Dict]:
-    """Remove duplicates by PMID first, then by DOI."""
-    seen_pmids, seen_dois, unique = set(), set(), []
+    """Remove duplicates by PMID, DOI, source id, then title/year fallback."""
+    seen_pmids, seen_dois, seen_source_ids, seen_titles, unique = set(), set(), set(), set(), []
     for p in papers:
         pmid = p.get("pmid") or ""
         doi = (p.get("doi") or "").lower().strip()
+        source_id = (p.get("source_id") or p.get("openalex_id") or "").lower().strip()
+        title_key = _title_key(p)
+
         if pmid and pmid in seen_pmids:
             continue
         if doi and doi in seen_dois:
             continue
+        if source_id and source_id in seen_source_ids:
+            continue
+        if not pmid and not doi and title_key and title_key in seen_titles:
+            continue
+
         if pmid:
             seen_pmids.add(pmid)
         if doi:
             seen_dois.add(doi)
+        if source_id:
+            seen_source_ids.add(source_id)
+        if title_key:
+            seen_titles.add(title_key)
         unique.append(p)
     log.info("Deduplication: %d -> %d papers", len(papers), len(unique))
     return unique

@@ -1,12 +1,13 @@
 """
-History tracker — deduplication against previously sent papers.
+History tracker - deduplication against previously sent papers.
 
 Stores a JSON file at data/sent_history.json with structure:
 {
   "sent_pmids": ["12345678", ...],
   "sent_dois":  ["10.1016/...", ...],
+  "sent_source_ids": ["https://openalex.org/W...", ...],
   "log": [
-    {"date": "2026-03-22", "pmids": [...], "count": 5}
+    {"date": "2026-03-22", "pmids": [...], "source_ids": [...], "count": 5}
   ]
 }
 """
@@ -26,10 +27,15 @@ def _load() -> Dict:
     if HISTORY_PATH.exists():
         try:
             with open(HISTORY_PATH, encoding="utf-8") as fh:
-                return json.load(fh)
+                data = json.load(fh)
+                data.setdefault("sent_pmids", [])
+                data.setdefault("sent_dois", [])
+                data.setdefault("sent_source_ids", [])
+                data.setdefault("log", [])
+                return data
         except Exception as exc:
             log.warning("Could not load history file: %s", exc)
-    return {"sent_pmids": [], "sent_dois": [], "log": []}
+    return {"sent_pmids": [], "sent_dois": [], "sent_source_ids": [], "log": []}
 
 
 def _save(history: Dict) -> None:
@@ -38,27 +44,37 @@ def _save(history: Dict) -> None:
         json.dump(history, fh, ensure_ascii=False, indent=2)
 
 
-def get_sent_ids() -> tuple[Set[str], Set[str]]:
-    """Return (sent_pmids, sent_dois) as sets."""
+def _source_id(paper: Dict) -> str:
+    return str(paper.get("source_id") or paper.get("openalex_id") or "").strip()
+
+
+def get_sent_ids() -> tuple[Set[str], Set[str], Set[str]]:
+    """Return (sent_pmids, sent_dois, sent_source_ids) as sets."""
     h = _load()
-    return set(h.get("sent_pmids", [])), set(h.get("sent_dois", []))
+    return set(h.get("sent_pmids", [])), set(h.get("sent_dois", [])), set(h.get("sent_source_ids", []))
 
 
 def filter_new_papers(papers: List[Dict]) -> List[Dict]:
     """Return only papers that have NOT been sent before."""
-    sent_pmids, sent_dois = get_sent_ids()
+    sent_pmids, sent_dois, sent_source_ids = get_sent_ids()
     new = []
     for p in papers:
         pmid = p.get("pmid") or ""
-        doi  = (p.get("doi") or "").lower().strip()
+        doi = (p.get("doi") or "").lower().strip()
+        source_id = _source_id(p)
         if pmid and pmid in sent_pmids:
             continue
         if doi and doi in sent_dois:
             continue
+        if source_id and source_id in sent_source_ids:
+            continue
         new.append(p)
 
-    log.info("History filter: %d total → %d new (not previously sent)",
-             len(papers), len(new))
+    log.info(
+        "History filter: %d total -> %d new (not previously sent)",
+        len(papers),
+        len(new),
+    )
     return new
 
 
@@ -68,26 +84,38 @@ def mark_as_sent(papers: List[Dict]) -> None:
         return
     h = _load()
     sent_pmids = set(h.get("sent_pmids", []))
-    sent_dois  = set(h.get("sent_dois", []))
+    sent_dois = set(h.get("sent_dois", []))
+    sent_source_ids = set(h.get("sent_source_ids", []))
 
     new_pmids = []
+    new_source_ids = []
     for p in papers:
         pmid = p.get("pmid") or ""
-        doi  = (p.get("doi") or "").lower().strip()
+        doi = (p.get("doi") or "").lower().strip()
+        source_id = _source_id(p)
         if pmid:
             sent_pmids.add(pmid)
             new_pmids.append(pmid)
         if doi:
             sent_dois.add(doi)
+        if source_id:
+            sent_source_ids.add(source_id)
+            new_source_ids.append(source_id)
 
     h["sent_pmids"] = sorted(sent_pmids)
-    h["sent_dois"]  = sorted(sent_dois)
+    h["sent_dois"] = sorted(sent_dois)
+    h["sent_source_ids"] = sorted(sent_source_ids)
     h.setdefault("log", []).append({
-        "date":  date.today().isoformat(),
+        "date": date.today().isoformat(),
         "pmids": new_pmids,
+        "source_ids": new_source_ids,
         "count": len(papers),
     })
 
     _save(h)
-    log.info("History updated: %d papers marked as sent (total in history: %d)",
-             len(papers), len(h["sent_pmids"]))
+    log.info(
+        "History updated: %d papers marked as sent (PMIDs: %d, source ids: %d)",
+        len(papers),
+        len(h["sent_pmids"]),
+        len(h["sent_source_ids"]),
+    )

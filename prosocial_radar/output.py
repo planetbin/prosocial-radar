@@ -10,6 +10,11 @@ from typing import Dict, List
 log = logging.getLogger(__name__)
 
 CSV_FIELDS = [
+    "source",
+    "source_id",
+    "source_query",
+    "openalex_id",
+    "indexed_in",
     "pmid",
     "title",
     "authors",
@@ -127,6 +132,8 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         year = p.get("year", "")
         cites = p.get("citation_count")
         cites_s = str(cites) if cites is not None else "-"
+        source = p.get("source", "")
+        source_query = (p.get("source_query") or "")[:80]
         tags = p.get("topic_tags", "")
         tier = p.get("topic_tier", "")
         anchors = p.get("matched_title_anchor_terms", "")
@@ -135,7 +142,9 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         authors = (p.get("authors") or "")[:100]
         affiliation = (p.get("first_author_affiliation") or p.get("affiliations") or "")[:120]
         print(f"\n[{i:>3}] {paper_title}")
-        print(f"       {journal} ({year}) | citations: {cites_s} | {status}")
+        print(f"       {journal} ({year}) | citations: {cites_s} | {status} | source: {source}")
+        if source_query:
+            print(f"       source query: {source_query}")
         if authors:
             print(f"       authors: {authors}")
         if affiliation:

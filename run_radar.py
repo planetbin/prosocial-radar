@@ -3,7 +3,7 @@
 Prosocial Research Radar main entry point.
 
 Pipeline:
-  PubMed fetch -> OpenAlex citations -> dedup/filter audit -> score
+  Multi-source candidate fetch -> OpenAlex citations -> dedup/filter audit -> score
   -> GitHub feedback adjustment -> history dedup -> structured AI summarize
   -> split CSV/JSON outputs -> email push -> run report
 """
@@ -20,14 +20,15 @@ from prosocial_radar.filter import build_filter_audit
 from prosocial_radar.history import filter_new_papers, mark_as_sent
 from prosocial_radar.openalex import enrich_with_citations
 from prosocial_radar.output import print_summary, save_csv, save_json, save_run_report
-from prosocial_radar.pubmed import fetch_details, get_all_pmids
 from prosocial_radar.push import send_email
 from prosocial_radar.scorer import score_papers
+from prosocial_radar.sources import fetch_candidate_papers
 from prosocial_radar.summarizer import ensure_summary_fields, summarize_papers
 
 
 def parse_args():
     p = argparse.ArgumentParser(description="Prosocial Research Radar")
+    p.add_argument("--sources", default="", help="Comma-separated candidate sources; default comes from profile")
     p.add_argument("--no-openalex", action="store_true")
     p.add_argument("--no-filter", action="store_true")
     p.add_argument("--no-score", action="store_true")
@@ -61,7 +62,14 @@ def _run_report_path(out_dir: Path) -> Path:
 
 
 def _new_identity(paper):
-    return paper.get("pmid") or (paper.get("doi") or "").lower().strip()
+    doi = (paper.get("doi") or "").lower().strip()
+    return (
+        paper.get("pmid")
+        or doi
+        or paper.get("source_id")
+        or paper.get("openalex_id")
+        or ""
+    )
 
 
 def _init_report(args) -> dict:
@@ -76,6 +84,7 @@ def _init_report(args) -> dict:
         "parameters": {
             "max_per_channel": args.max,
             "top": args.top,
+            "sources": args.sources or config.SOURCE_ENABLED,
             "no_openalex": args.no_openalex,
             "no_filter": args.no_filter,
             "no_score": args.no_score,
@@ -141,19 +150,14 @@ def main():
 
     report["feedback"] = sync_feedback_from_github()
 
-    pmids = get_all_pmids(max_results=args.max)
-    report["stages"]["pubmed_pmids"] = len(pmids)
-    if not pmids:
-        log.error("No PMIDs returned. Check query or network.")
-        _finish_report(report, out_dir, "failed", "No PMIDs returned from PubMed")
-        sys.exit(1)
-
-    papers = fetch_details(pmids)
-    report["stages"]["pubmed_details"] = len(papers)
-    report["stages"]["pubmed_detail_missing"] = max(len(pmids) - len(papers), 0)
+    source_result = fetch_candidate_papers(max_results=args.max, enabled_sources=args.sources)
+    papers = list(source_result.get("papers", []))
+    source_report = {key: value for key, value in source_result.items() if key != "papers"}
+    report["stages"]["source_fetch"] = source_report
+    report["stages"]["raw_candidates"] = len(papers)
     if not papers:
-        log.error("No paper details fetched.")
-        _finish_report(report, out_dir, "failed", "No paper details fetched")
+        log.error("No papers returned. Check source configuration or network.")
+        _finish_report(report, out_dir, "failed", "No papers returned from enabled candidate sources")
         sys.exit(1)
     log.info("Raw papers fetched: %d", len(papers))
 
