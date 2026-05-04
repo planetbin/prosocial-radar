@@ -1,6 +1,6 @@
 {
-  "started_at_utc": "2026-05-04T03:31:59+00:00",
-  "finished_at_utc": "2026-05-04T03:33:00+00:00",
+  "started_at_utc": "2026-05-04T10:13:18+00:00",
+  "finished_at_utc": "2026-05-04T10:16:10+00:00",
   "status": "ok",
   "profile": {
     "name": "default",
@@ -9,6 +9,10 @@
   "parameters": {
     "max_per_channel": 200,
     "top": 8,
+    "sources": [
+      "pubmed",
+      "openalex"
+    ],
     "no_openalex": false,
     "no_filter": false,
     "no_score": false,
@@ -16,18 +20,29 @@
     "no_push": false
   },
   "stages": {
-    "pubmed_pmids": 417,
-    "pubmed_details": 417,
-    "pubmed_detail_missing": 0,
-    "openalex_enriched": 409,
-    "before_filter": 417,
-    "unique_after_dedup": 417,
-    "after_filter": 166,
-    "filtered_out": 251,
-    "scored": 166,
+    "source_fetch": {
+      "enabled": [
+        "pubmed",
+        "openalex"
+      ],
+      "counts": {
+        "pubmed_pmids": 409,
+        "pubmed_details": 409,
+        "openalex_details": 797,
+        "raw_total": 1206
+      },
+      "errors": []
+    },
+    "raw_candidates": 1206,
+    "openalex_enriched": 1183,
+    "before_filter": 1206,
+    "unique_after_dedup": 1188,
+    "after_filter": 496,
+    "filtered_out": 692,
+    "scored": 496,
     "feedback_adjusted": 0,
-    "new_after_history": 106,
-    "already_seen_after_history": 60
+    "new_after_history": 460,
+    "already_seen_after_history": 36
   },
   "summaries": {
     "attempted": 8,
