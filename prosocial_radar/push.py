@@ -43,6 +43,47 @@ TAG_COLORS = {
     "moral": "#65a30d",
 }
 
+RESEARCH_TAG_COLORS = {
+    "aging_prosociality": "#0f766e",
+    "age_comparison": "#0d9488",
+    "helping_decision": "#2563eb",
+    "sharing": "#16a34a",
+    "comforting": "#db2777",
+    "cost_mechanism": "#ea580c",
+    "familiarity_mechanism": "#7c3aed",
+    "ses_resource_mechanism": "#a16207",
+    "value_based_decision": "#dc2626",
+    "attentional_mechanism": "#0891b2",
+    "neural_mechanism": "#4f46e5",
+    "measurement_validation": "#475569",
+    "picture_vignette_method": "#64748b",
+    "psychometrics": "#334155",
+    "meta_analysis": "#9333ea",
+    "computational_modeling_bridge": "#f59e0b",
+    "psychology_priority": "#0369a1",
+}
+
+SECTION_INFO = {
+    "top": ("Today's must-read", "Highest-ranked papers after topic relevance and profile-fit reranking."),
+    "aging_lifespan": ("Aging and lifespan prosociality", "Older-adult, age-comparison, and lifespan papers closest to the core research line."),
+    "neural_attention": ("Neural and attentional mechanisms", "Brain, gaze, attention, and perception-to-helping decision leads."),
+    "measurement_methods": ("Measurement and methods", "Scale, picture/vignette, psychometric, review, and meta-analysis material."),
+    "computational_modeling": ("Computational modeling", "Model-based, utility, reinforcement-learning, and value-decision bridges."),
+    "mechanism_leads": ("Mechanism leads", "Cost, familiarity, SES/resources, and value-based decision explanations."),
+    "general_prosocial": ("General prosocial behavior", "Relevant but less specifically aligned papers."),
+    "peripheral_watch": ("Peripheral watch", "Applied or policy-facing papers to keep only if strategically useful."),
+}
+
+SECTION_ORDER = [
+    "aging_lifespan",
+    "neural_attention",
+    "measurement_methods",
+    "computational_modeling",
+    "mechanism_leads",
+    "general_prosocial",
+    "peripheral_watch",
+]
+
 FEEDBACK_BUTTONS = [
     ("must_read", "Must read", "#166534", "#dcfce7"),
     ("useful", "Useful", "#1d4ed8", "#dbeafe"),
@@ -70,6 +111,13 @@ def _tag_badges(tags_str: str) -> str:
     tags = [t.strip() for t in (tags_str or "").split(";") if t.strip()]
     return "".join(
         _badge(t.replace("_", " "), TAG_COLORS.get(t, "#6b7280"))
+        for t in tags
+    )
+
+def _research_tag_badges(tags_str: str) -> str:
+    tags = [t.strip() for t in (tags_str or "").split(";") if t.strip()]
+    return "".join(
+        _badge(t.replace("_", " "), RESEARCH_TAG_COLORS.get(t, "#475569"), "20")
         for t in tags
     )
 
@@ -121,6 +169,9 @@ def _paper_card(rank: int, p: Dict) -> str:
     citations = p.get("citation_count")
     score = p.get("relevance_score", "")
     tags = p.get("topic_tags", "")
+    research_tags = p.get("research_use_tags", "")
+    research_takeaway = p.get("research_takeaway", "")
+    research_fit = p.get("research_alignment_score")
     ai_summary = p.get("ai_summary", "")
     ai_finding = p.get("ai_finding", "")
     ai_method = p.get("ai_method", "")
@@ -129,6 +180,7 @@ def _paper_card(rank: int, p: Dict) -> str:
 
     cite_str = f"{citations:,}" if citations and citations > 0 else "-"
     score_str = f"{score:.0f}" if isinstance(score, (int, float)) else "-"
+    fit_str = f"{research_fit:.0f}" if isinstance(research_fit, (int, float)) else "-"
 
     link = p.get("doi_url") or p.get("url", "")
     link_html = (
@@ -138,6 +190,7 @@ def _paper_card(rank: int, p: Dict) -> str:
 
     explanation_html = "".join([
         _detail("Why selected", p.get("selection_reason") or p.get("filter_reason", "")),
+        _detail("Why worth seeing", research_takeaway),
         _detail("Feedback signal", p.get("feedback_reason", "")),
     ])
 
@@ -180,12 +233,13 @@ def _paper_card(rank: int, p: Dict) -> str:
         f'<span style="font-size:11px;font-weight:700;color:#94a3b8;">#{rank}</span>'
         f'<span style="font-size:11px;color:#94a3b8;">'
         f'Score: <strong style="color:#2563eb;">{score_str}</strong>'
-        f'&nbsp;|&nbsp;Citations: <strong>{cite_str}</strong></span></div>'
+        f'&nbsp;|&nbsp;Citations: <strong>{cite_str}</strong>'
+        f'&nbsp;|&nbsp;Fit: <strong>{fit_str}</strong></span></div>'
         f'<h3 style="margin:0 0 6px;font-size:15px;line-height:1.4;color:#0f172a;">{title}</h3>'
         f'<p style="margin:0 0 8px;font-size:12px;color:#64748b;">{journal} &nbsp;&middot;&nbsp; {year}</p>'
         f'{_detail("Authors", authors)}'
         f'{_detail("Institution", institution)}'
-        f'<div style="margin-bottom:8px;">{method_html}{_tag_badges(tags)}</div>'
+        f'<div style="margin-bottom:8px;">{method_html}{_tag_badges(tags)}{_research_tag_badges(research_tags)}</div>'
         f'{explanation_block}'
         f'{ai_block}'
         f'<div style="margin-top:12px;">{link_html}</div>'
@@ -195,8 +249,32 @@ def _paper_card(rank: int, p: Dict) -> str:
 
 
 def render_email(papers: List[Dict], total_found: int) -> str:
+    def section_html(section_key: str, ranked: List[tuple[int, Dict]]) -> str:
+        if not ranked:
+            return ""
+        title, desc = SECTION_INFO.get(section_key, SECTION_INFO["general_prosocial"])
+        cards = "".join(_paper_card(rank, paper) for rank, paper in ranked)
+        return (
+            f'<div style="margin:22px 0 10px;">'
+            f'<h2 style="margin:0 0 4px;font-size:16px;color:#0f172a;">{html.escape(title)}</h2>'
+            f'<p style="margin:0 0 12px;font-size:12px;color:#64748b;">{html.escape(desc)}</p>'
+            f'{cards}</div>'
+        )
+
+    ranked = list(enumerate(papers, 1))
+    top = ranked[:5]
+    top_ids = {id(paper) for _, paper in top}
+    grouped = {key: [] for key in SECTION_ORDER}
+    for rank, paper in ranked[5:]:
+        if id(paper) in top_ids:
+            continue
+        key = str(paper.get("email_section") or "general_prosocial")
+        if key not in grouped:
+            key = "general_prosocial"
+        grouped[key].append((rank, paper))
+
     today = date.today().strftime("%B %d, %Y")
-    cards_html = "".join(_paper_card(i + 1, p) for i, p in enumerate(papers))
+    cards_html = section_html("top", top) + "".join(section_html(key, grouped[key]) for key in SECTION_ORDER)
 
     return (
         '<!DOCTYPE html><html lang="en"><head>'
@@ -209,7 +287,7 @@ def render_email(papers: List[Dict], total_found: int) -> str:
         '<div style="background:#0f172a;border-radius:10px;padding:28px 28px 24px;margin-bottom:24px;color:#fff;">'
         f'<p style="margin:0 0 4px;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.8;">'
         f'Daily Digest &middot; {today}</p>'
-        '<h1 style="margin:0 0 8px;font-size:22px;font-weight:700;">Prosocial Research Radar</h1>'
+        '<h1 style="margin:0 0 8px;font-size:22px;font-weight:700;">Research-Focused Prosocial Radar</h1>'
         f'<p style="margin:0;font-size:14px;opacity:.85;">'
         f'{len(papers)} new papers selected from {total_found} candidates</p>'
         '</div>'

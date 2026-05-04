@@ -51,6 +51,13 @@ CSV_FIELDS = [
     "score_citation",
     "score_recency",
     "score_breadth",
+    "score_research_alignment",
+    "research_alignment_score",
+    "research_alignment_penalty",
+    "research_alignment_reason",
+    "research_use_tags",
+    "research_takeaway",
+    "email_section",
     "score_quality",
     "score_penalty",
     "score_breakdown",
@@ -139,6 +146,9 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
         anchors = p.get("matched_title_anchor_terms", "")
         status = p.get("selection_status", "")
         reason = (p.get("selection_reason") or p.get("filter_reason") or "")[:140]
+        research_tags = p.get("research_use_tags", "")
+        research_fit = p.get("research_alignment_score", "")
+        takeaway = (p.get("research_takeaway") or "")[:150]
         authors = (p.get("authors") or "")[:100]
         affiliation = (p.get("first_author_affiliation") or p.get("affiliations") or "")[:120]
         print(f"\n[{i:>3}] {paper_title}")
@@ -155,6 +165,10 @@ def print_summary(papers: List[Dict], title: str = "Prosocial Research Radar") -
             print(f"       tags: {tags}")
         if reason:
             print(f"       why: {reason}")
+        if research_tags:
+            print(f"       research fit: {research_fit} | {research_tags}")
+        if takeaway:
+            print(f"       worth seeing: {takeaway}")
     if len(papers) > 20:
         print(f"\n  ... and {len(papers) - 20} more papers in the output files.")
     print(f"\n{'=' * 80}\n")

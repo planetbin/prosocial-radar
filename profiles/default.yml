@@ -26,7 +26,11 @@ pubmed:
     "neural"[tiab] OR "brain"[tiab] OR "computational model"[tiab] OR
     "computational modeling"[tiab] OR "computational modelling"[tiab] OR
     "reinforcement learning"[tiab] OR "drift diffusion"[tiab] OR "Bayesian model"[tiab] OR
-    "agent-based model"[tiab] OR "choice model"[tiab] OR "utility model"[tiab])
+    "agent-based model"[tiab] OR "choice model"[tiab] OR "utility model"[tiab] OR
+    "older adult"[tiab] OR "older adults"[tiab] OR aging[tiab] OR ageing[tiab] OR
+    lifespan[tiab] OR "age differences"[tiab] OR attention[tiab] OR attentional[tiab] OR
+    gaze[tiab] OR "eye tracking"[tiab] OR "cost-benefit"[tiab] OR familiarity[tiab] OR
+    psychometric[tiab] OR validation[tiab] OR "picture-based"[tiab] OR vignette[tiab])
 
 openalex:
   polite_pool_email: research-radar@example.com
@@ -61,6 +65,14 @@ openalex:
       query: reinforcement learning prosocial altruism social preference generosity
     - name: decision_models
       query: drift diffusion Bayesian model agent based model choice model altruism cooperation
+    - name: aging_prosociality
+      query: older adults aging prosocial behavior helping sharing comforting
+    - name: age_helping_neural
+      query: younger older adults helping prosocial neural attention gaze
+    - name: measurement_prosociality
+      query: prosociality measure scale validation psychometric picture vignette
+    - name: cost_familiarity_prosocial
+      query: prosocial helping sharing cost familiarity social distance older adults
 
 email:
   recipients:
@@ -105,6 +117,14 @@ target_journals:
   - judgment and decision making
   - evolution and human behavior
   - computational brain & behavior
+  - psychology and aging
+  - the gerontologist
+  - journal of gerontology: psychological sciences
+  - journals of gerontology series b: psychological sciences and social sciences
+  - aging neuropsychology and cognition
+  - aging & mental health
+  - acta psychologica
+  - scientific reports
   - plos computational biology
   - plos one
 
@@ -129,6 +149,8 @@ filters:
       - '\bhelping behavior\b'
       - '\bhelping behaviour\b'
       - '\bhelping\b'
+      - '\bcomforting\b'
+      - '\bemotional support\b'
       - '\bsharing\b'
       - '\bcostly sharing\b'
       - '\bresource sharing\b'
@@ -155,6 +177,17 @@ filters:
       - '\bcompassion\b'
       - '\bmoral emotion\b'
       - '\breward sensitivity\b'
+      - '\bcost[- ]benefit\b'
+      - '\bcostly\b'
+      - '\bfamiliarity\b'
+      - '\bsocial distance\b'
+      - '\bvalue[- ]based\b'
+      - '\battention\b'
+      - '\battentional\b'
+      - '\bgaze\b'
+      - '\beye[- ]tracking\b'
+      - '\bpsychometric\w*\b'
+      - '\bmeasurement invariance\b'
       - '\bcomputational model\w*\b'
       - '\bcomputational modelling\b'
       - '\bcomputational psychiatry\b'
@@ -184,6 +217,11 @@ filters:
       - '\badolescent\b'
       - '\bdevelopment\b'
       - '\bdevelopmental\b'
+      - '\bolder adult\w*\b'
+      - '\baging\b'
+      - '\bageing\b'
+      - '\blifespan\b'
+      - '\bage difference\w*\b'
       - '\bbehavior\b'
       - '\bbehaviour\b'
       - '\bcooperation\b'
@@ -385,3 +423,26 @@ filters:
     moral:
       - '\bmoral\b'
       - '\bethics\b'
+    aging:
+      - '\bolder adult\w*\b'
+      - '\baging\b'
+      - '\bageing\b'
+      - '\blifespan\b'
+    attention:
+      - '\battention\b'
+      - '\battentional\b'
+      - '\bgaze\b'
+      - '\beye[- ]tracking\b'
+    measurement:
+      - '\bpsychometric\w*\b'
+      - '\bvalidation\b'
+      - '\bscale\b'
+      - '\bmeasurement invariance\b'
+      - '\bpicture[- ]based\b'
+      - '\bvignette\b'
+    cost_familiarity:
+      - '\bcost[- ]benefit\b'
+      - '\bcostly\b'
+      - '\bfamiliarity\b'
+      - '\bsocial distance\b'
+      - '\bvalue[- ]based\b'

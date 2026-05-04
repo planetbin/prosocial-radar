@@ -80,6 +80,7 @@ def feedback_issue_url(paper: Dict, rating: str) -> str:
     title = str(paper.get("title") or "").strip()
     journal = str(paper.get("journal") or "").strip()
     tags = str(paper.get("topic_tags") or "").strip()
+    research_tags = str(paper.get("research_use_tags") or "").strip()
     score = str(paper.get("relevance_score") or "").strip()
 
     key_label = pmid or doi or source_id or "none"
@@ -94,6 +95,7 @@ def feedback_issue_url(paper: Dict, rating: str) -> str:
         f"title: {title}",
         f"journal: {journal}",
         f"topic_tags: {tags}",
+        f"research_use_tags: {research_tags}",
         f"score: {score}",
         "",
         "Notes:",
@@ -115,7 +117,7 @@ def attach_feedback_links(papers: Iterable[Dict]) -> None:
 
 def _parse_feedback_body(body: str) -> Dict[str, str]:
     fields: Dict[str, str] = {}
-    allowed = {"rating", "pmid", "doi", "source", "source_id", "title", "journal", "topic_tags", "score"}
+    allowed = {"rating", "pmid", "doi", "source", "source_id", "title", "journal", "topic_tags", "research_use_tags", "score"}
     for line in (body or "").splitlines():
         if ":" not in line:
             continue
@@ -155,6 +157,7 @@ def _issue_to_feedback(issue: Dict) -> Dict | None:
         "title": fields.get("title", ""),
         "journal": fields.get("journal", ""),
         "topic_tags": fields.get("topic_tags", ""),
+        "research_use_tags": fields.get("research_use_tags", ""),
         "score": fields.get("score", ""),
         "issue_number": issue.get("number"),
         "issue_url": issue.get("html_url"),
@@ -212,6 +215,7 @@ def _rating_bucket(feedback: Dict[str, Dict], ratings: set[str]) -> List[Dict]:
 def _similarity_adjustment(paper: Dict, feedback: Dict[str, Dict]) -> tuple[float, List[str]]:
     paper_journal = (paper.get("journal") or "").lower().strip()
     paper_tags = _tags(paper.get("topic_tags") or "")
+    paper_research_tags = _tags(paper.get("research_use_tags") or "")
     adjustment = 0.0
     reasons: List[str] = []
 
@@ -221,11 +225,15 @@ def _similarity_adjustment(paper: Dict, feedback: Dict[str, Dict]) -> tuple[floa
     for item in positive:
         item_journal = (item.get("journal") or "").lower().strip()
         item_tags = _tags(item.get("topic_tags") or "")
+        item_research_tags = _tags(item.get("research_use_tags") or "")
         if item_journal and paper_journal and item_journal == paper_journal:
             adjustment += 2.0
         shared = paper_tags & item_tags
         if shared:
             adjustment += min(len(shared) * 1.5, 4.5)
+        shared_research = paper_research_tags & item_research_tags
+        if shared_research:
+            adjustment += min(len(shared_research) * 2.0, 6.0)
 
     for item in negative:
         item_journal = (item.get("journal") or "").lower().strip()
@@ -235,6 +243,9 @@ def _similarity_adjustment(paper: Dict, feedback: Dict[str, Dict]) -> tuple[floa
         shared = paper_tags & item_tags
         if shared:
             adjustment -= min(len(shared) * 2.0, 6.0)
+        shared_research = paper_research_tags & item_research_tags
+        if shared_research:
+            adjustment -= min(len(shared_research) * 2.5, 8.0)
 
     adjustment = max(min(adjustment, 12.0), -18.0)
     if adjustment > 0:

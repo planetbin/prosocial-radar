@@ -15,6 +15,8 @@ import math
 from datetime import date
 from typing import Dict, List
 
+from .research_profile import annotate_research_profile
+
 log = logging.getLogger(__name__)
 
 CURRENT_YEAR = date.today().year
@@ -99,7 +101,9 @@ def _score_components(paper: Dict) -> Dict[str, float]:
     br = _breadth_bonus(paper)
     quality = _quality_bonus(paper)
     penalty = _noise_penalty(paper)
-    final = max(0.0, min(round(topic + cit + rec + br + quality - penalty, 1), 100.0))
+    annotate_research_profile(paper)
+    research = float(paper.get("research_alignment_adjustment") or 0.0)
+    final = max(0.0, min(round(topic + cit + rec + br + quality + research - penalty, 1), 100.0))
     return {
         "topic": round(topic, 1),
         "keyword": round(topic, 1),  # Backward-compatible output column.
@@ -108,6 +112,7 @@ def _score_components(paper: Dict) -> Dict[str, float]:
         "recency": round(rec, 1),
         "breadth": round(br, 1),
         "quality": round(quality, 1),
+        "research_alignment": round(research, 1),
         "penalty": round(penalty, 1),
         "final": final,
     }
@@ -115,7 +120,7 @@ def _score_components(paper: Dict) -> Dict[str, float]:
 
 def _selection_reason(paper: Dict, components: Dict[str, float]) -> str:
     parts = [
-        "score {final:.1f}: topic {topic:.1f}/55, citations {citation:.1f}/12, recency {recency:.1f}/18, breadth {breadth:.1f}/6, quality {quality:.1f}/4, penalty -{penalty:.1f}".format(**components)
+        "score {final:.1f}: topic {topic:.1f}/55, citations {citation:.1f}/12, recency {recency:.1f}/18, breadth {breadth:.1f}/6, quality {quality:.1f}/4, research fit {research_alignment:+.1f}, penalty -{penalty:.1f}".format(**components)
     ]
     if paper.get("topic_tier"):
         parts.append(f"topic tier: {paper.get('topic_tier')}")
@@ -127,6 +132,10 @@ def _selection_reason(paper: Dict, components: Dict[str, float]) -> str:
         parts.append("filter passed because " + str(paper.get("filter_reason")))
     if paper.get("is_high_quality"):
         parts.append("target-journal quality badge")
+    if paper.get("research_use_tags"):
+        parts.append("research profile: " + str(paper.get("research_use_tags")))
+    if paper.get("research_takeaway"):
+        parts.append("why worth seeing: " + str(paper.get("research_takeaway")))
     return "; ".join(parts)
 
 
@@ -147,6 +156,7 @@ def score_papers(papers: List[Dict]) -> List[Dict]:
         p["score_recency"] = components["recency"]
         p["score_breadth"] = components["breadth"]
         p["score_quality"] = components["quality"]
+        p["score_research_alignment"] = components["research_alignment"]
         p["score_penalty"] = components["penalty"]
         p["relevance_score"] = components["final"]
         p["score_breakdown"] = (
@@ -155,6 +165,7 @@ def score_papers(papers: List[Dict]) -> List[Dict]:
             f"recency={components['recency']:.1f}; "
             f"breadth={components['breadth']:.1f}; "
             f"quality={components['quality']:.1f}; "
+            f"research_alignment={components['research_alignment']:+.1f}; "
             f"penalty=-{components['penalty']:.1f}"
         )
         p["selection_reason"] = _selection_reason(p, components)

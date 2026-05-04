@@ -23,6 +23,8 @@ from .config import (
 )
 
 log = logging.getLogger(__name__)
+from .research_profile import annotate_research_profile
+
 
 PASSED_TIERS = {"core", "mechanism_linked"}
 
@@ -208,6 +210,7 @@ def annotate_filter_decision(paper: Dict) -> Dict:
     paper["is_high_quality"] = high_quality
     paper["filter_decision"] = "passed" if passed else "filtered_out"
     paper["filter_reason"] = _filter_reason(topic, tags, high_quality)
+    annotate_research_profile(paper)
     return paper
 
 
