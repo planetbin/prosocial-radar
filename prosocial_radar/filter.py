@@ -197,20 +197,40 @@ def annotate_filter_decision(paper: Dict) -> Dict:
     return paper
 
 
+def _title_key(paper: Dict) -> str:
+    title = re.sub(r"\W+", " ", (paper.get("title") or "").lower()).strip()
+    if len(title) < 20:
+        return ""
+    year = str(paper.get("year") or "")[:4]
+    return f"{title}|{year}"
+
+
 def deduplicate(papers: List[Dict]) -> List[Dict]:
-    """Remove duplicates by PMID first, then by DOI."""
-    seen_pmids, seen_dois, unique = set(), set(), []
+    """Remove duplicates by PMID, DOI, source id, then title/year fallback."""
+    seen_pmids, seen_dois, seen_source_ids, seen_titles, unique = set(), set(), set(), set(), []
     for p in papers:
         pmid = p.get("pmid") or ""
         doi = (p.get("doi") or "").lower().strip()
+        source_id = (p.get("source_id") or p.get("openalex_id") or "").lower().strip()
+        title_key = _title_key(p)
+
         if pmid and pmid in seen_pmids:
             continue
         if doi and doi in seen_dois:
             continue
+        if source_id and source_id in seen_source_ids:
+            continue
+        if not pmid and not doi and title_key and title_key in seen_titles:
+            continue
+
         if pmid:
             seen_pmids.add(pmid)
         if doi:
             seen_dois.add(doi)
+        if source_id:
+            seen_source_ids.add(source_id)
+        if title_key:
+            seen_titles.add(title_key)
         unique.append(p)
     log.info("Deduplication: %d -> %d papers", len(papers), len(unique))
     return unique
