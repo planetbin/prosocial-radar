@@ -14,7 +14,7 @@ import subprocess
 from datetime import date
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Dict, List
+from typing import Dict, Iterable, List
 
 from . import config
 
@@ -107,15 +107,20 @@ def _method_badge(method: str) -> str:
     return _badge(method or "other", color)
 
 
+def _split_values(value: str) -> List[str]:
+    return [item.strip() for item in str(value or "").split(";") if item.strip()]
+
+
 def _tag_badges(tags_str: str) -> str:
-    tags = [t.strip() for t in (tags_str or "").split(";") if t.strip()]
+    tags = _split_values(tags_str)
     return "".join(
         _badge(t.replace("_", " "), TAG_COLORS.get(t, "#6b7280"))
         for t in tags
     )
 
+
 def _research_tag_badges(tags_str: str) -> str:
-    tags = [t.strip() for t in (tags_str or "").split(";") if t.strip()]
+    tags = _split_values(tags_str)
     return "".join(
         _badge(t.replace("_", " "), RESEARCH_TAG_COLORS.get(t, "#475569"), "20")
         for t in tags
@@ -137,6 +142,106 @@ def _shorten(value: str, limit: int = 260) -> str:
     if len(text) <= limit:
         return text
     return text[:limit - 1].rstrip() + "..."
+
+
+def _compact_values(values: Iterable[str], limit: int = 4) -> str:
+    seen: List[str] = []
+    for value in values:
+        for item in _split_values(value):
+            if item and item not in seen:
+                seen.append(item)
+    if not seen:
+        return ""
+    shown = seen[:limit]
+    suffix = f" +{len(seen) - limit} more" if len(seen) > limit else ""
+    return "; ".join(shown) + suffix
+
+
+def _score_line(p: Dict) -> str:
+    score = p.get("relevance_score")
+    topic = p.get("score_topic")
+    recency = p.get("score_recency")
+    citations = p.get("score_citation")
+    research = p.get("score_research_alignment")
+    penalty = p.get("score_penalty")
+
+    def fmt(value: object, signed: bool = False) -> str:
+        if isinstance(value, (int, float)):
+            return f"{value:+.1f}" if signed else f"{value:.1f}"
+        return "-"
+
+    return (
+        f"score {fmt(score)} | topic {fmt(topic)}/55 | recency {fmt(recency)}/18 | "
+        f"citations {fmt(citations)}/12 | research fit {fmt(research, signed=True)} | penalty -{fmt(penalty)}"
+    )
+
+
+def _why_row(label: str, value: str) -> str:
+    if not value:
+        return ""
+    return (
+        '<tr>'
+        f'<td style="width:88px;padding:3px 8px 3px 0;vertical-align:top;font-size:12px;color:#64748b;font-weight:700;">{html.escape(label)}</td>'
+        f'<td style="padding:3px 0;vertical-align:top;font-size:12px;line-height:1.45;color:#334155;">{html.escape(value)}</td>'
+        '</tr>'
+    )
+
+
+def _why_selected_block(p: Dict) -> str:
+    core = _compact_values([
+        p.get("matched_title_anchor_terms", ""),
+        p.get("matched_core_terms", ""),
+    ], limit=4)
+    mechanism = _compact_values([
+        p.get("matched_paradigm_terms", ""),
+        p.get("matched_mechanism_terms", ""),
+    ], limit=4)
+    context = _compact_values([p.get("matched_context_terms", "")], limit=3)
+    research_tags = _compact_values([p.get("research_use_tags", "")], limit=4)
+    takeaway = _shorten(p.get("research_takeaway", ""), 210)
+
+    cautions = []
+    if p.get("matched_soft_exclude_terms"):
+        cautions.append("soft caution: " + _compact_values([p.get("matched_soft_exclude_terms", "")], limit=3))
+    if p.get("matched_hard_exclude_terms"):
+        cautions.append("hard caution: " + _compact_values([p.get("matched_hard_exclude_terms", "")], limit=3))
+    penalty = p.get("research_alignment_penalty")
+    if isinstance(penalty, (int, float)) and penalty > 0:
+        cautions.append(f"profile penalty -{penalty:.1f}")
+    if p.get("email_section") == "peripheral_watch":
+        cautions.append("peripheral watch")
+    caution = "; ".join(c for c in cautions if c)
+
+    rows = "".join([
+        _why_row("Core", core or str(p.get("topic_tier") or "")),
+        _why_row("Mechanism", mechanism),
+        _why_row("Context", context),
+        _why_row("Profile", research_tags),
+        _why_row("Worth seeing", takeaway),
+        _why_row("Caution", caution),
+        _why_row("Score", _score_line(p)),
+    ])
+    if not rows:
+        return ""
+
+    full_trace = _shorten(p.get("selection_reason") or p.get("filter_reason", ""), 900)
+    trace_html = ""
+    if full_trace:
+        trace_html = (
+            '<details style="margin-top:8px;">'
+            '<summary style="font-size:11px;color:#64748b;cursor:pointer;font-weight:700;">Full selection trace</summary>'
+            f'<p style="margin:6px 0 0;font-size:11px;line-height:1.45;color:#64748b;">{html.escape(full_trace)}</p>'
+            '</details>'
+        )
+
+    return (
+        '<div style="margin:10px 0 0;padding:10px 12px;background:#fefce8;'
+        'border-left:3px solid #ca8a04;border-radius:0 6px 6px 0;">'
+        '<p style="margin:0 0 6px;font-size:12px;color:#854d0e;font-weight:800;">Why selected</p>'
+        f'<table role="presentation" style="width:100%;border-collapse:collapse;">{rows}</table>'
+        f'{trace_html}'
+        '</div>'
+    )
 
 
 def _feedback_buttons(p: Dict) -> str:
@@ -170,7 +275,6 @@ def _paper_card(rank: int, p: Dict) -> str:
     score = p.get("relevance_score", "")
     tags = p.get("topic_tags", "")
     research_tags = p.get("research_use_tags", "")
-    research_takeaway = p.get("research_takeaway", "")
     research_fit = p.get("research_alignment_score")
     ai_summary = p.get("ai_summary", "")
     ai_finding = p.get("ai_finding", "")
@@ -187,12 +291,6 @@ def _paper_card(rank: int, p: Dict) -> str:
         f'<a href="{html.escape(link, quote=True)}" style="color:#2563eb;text-decoration:none;font-weight:600;">'
         f'Read paper &#8594;</a>'
     ) if link else ""
-
-    explanation_html = "".join([
-        _detail("Why selected", p.get("selection_reason") or p.get("filter_reason", "")),
-        _detail("Why worth seeing", research_takeaway),
-        _detail("Feedback signal", p.get("feedback_reason", "")),
-    ])
 
     structured_html = "".join([
         _detail("Question", p.get("ai_research_question", "")),
@@ -217,11 +315,6 @@ def _paper_card(rank: int, p: Dict) -> str:
             f'{summary_p}{structured_html}</div>'
         )
 
-    explanation_block = (
-        f'<div style="margin:10px 0 0;padding:9px 11px;background:#fefce8;'
-        f'border-left:3px solid #ca8a04;border-radius:0 6px 6px 0;">{explanation_html}</div>'
-        if explanation_html else ""
-    )
     method_html = _method_badge(ai_method) if ai_method else ""
 
     return (
@@ -240,11 +333,40 @@ def _paper_card(rank: int, p: Dict) -> str:
         f'{_detail("Authors", authors)}'
         f'{_detail("Institution", institution)}'
         f'<div style="margin-bottom:8px;">{method_html}{_tag_badges(tags)}{_research_tag_badges(research_tags)}</div>'
-        f'{explanation_block}'
+        f'{_why_selected_block(p)}'
+        f'{_detail("Feedback signal", p.get("feedback_reason", ""))}'
         f'{ai_block}'
         f'<div style="margin-top:12px;">{link_html}</div>'
         f'{_feedback_buttons(p)}'
         f'</div>'
+    )
+
+
+def _section_anchor(section_key: str) -> str:
+    return "section-" + "".join(ch if ch.isalnum() else "-" for ch in section_key.lower())
+
+
+def _toc_html(section_entries: List[tuple[str, int]]) -> str:
+    if not section_entries:
+        return ""
+    rows = []
+    for idx, (section_key, count) in enumerate(section_entries, 1):
+        title, desc = SECTION_INFO.get(section_key, SECTION_INFO["general_prosocial"])
+        rows.append(
+            '<tr>'
+            f'<td style="padding:7px 8px 7px 0;width:24px;font-size:12px;color:#94a3b8;font-weight:700;">{idx}</td>'
+            '<td style="padding:7px 8px 7px 0;">'
+            f'<a href="#{_section_anchor(section_key)}" style="font-size:13px;color:#0f172a;text-decoration:none;font-weight:800;">{html.escape(title)}</a>'
+            f'<p style="margin:2px 0 0;font-size:11px;line-height:1.35;color:#64748b;">{html.escape(desc)}</p>'
+            '</td>'
+            f'<td style="padding:7px 0;text-align:right;font-size:12px;color:#475569;font-weight:800;white-space:nowrap;">{count} papers</td>'
+            '</tr>'
+        )
+    return (
+        '<div style="margin:0 0 22px;padding:16px 18px;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;">'
+        '<p style="margin:0 0 8px;font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:#64748b;font-weight:800;">Today\'s Map</p>'
+        f'<table role="presentation" style="width:100%;border-collapse:collapse;">{"".join(rows)}</table>'
+        '</div>'
     )
 
 
@@ -254,9 +376,12 @@ def render_email(papers: List[Dict], total_found: int) -> str:
             return ""
         title, desc = SECTION_INFO.get(section_key, SECTION_INFO["general_prosocial"])
         cards = "".join(_paper_card(rank, paper) for rank, paper in ranked)
+        count = len(ranked)
+        count_label = "1 paper" if count == 1 else f"{count} papers"
         return (
-            f'<div style="margin:22px 0 10px;">'
-            f'<h2 style="margin:0 0 4px;font-size:16px;color:#0f172a;">{html.escape(title)}</h2>'
+            f'<div id="{_section_anchor(section_key)}" style="margin:22px 0 10px;">'
+            f'<h2 style="margin:0 0 4px;font-size:16px;color:#0f172a;">{html.escape(title)} '
+            f'<span style="font-size:12px;color:#64748b;font-weight:600;">&middot; {count_label}</span></h2>'
             f'<p style="margin:0 0 12px;font-size:12px;color:#64748b;">{html.escape(desc)}</p>'
             f'{cards}</div>'
         )
@@ -273,7 +398,13 @@ def render_email(papers: List[Dict], total_found: int) -> str:
             key = "general_prosocial"
         grouped[key].append((rank, paper))
 
+    section_entries = []
+    if top:
+        section_entries.append(("top", len(top)))
+    section_entries.extend((key, len(grouped[key])) for key in SECTION_ORDER if grouped[key])
+
     today = date.today().strftime("%B %d, %Y")
+    toc_html = _toc_html(section_entries)
     cards_html = section_html("top", top) + "".join(section_html(key, grouped[key]) for key in SECTION_ORDER)
 
     return (
@@ -291,7 +422,7 @@ def render_email(papers: List[Dict], total_found: int) -> str:
         f'<p style="margin:0;font-size:14px;opacity:.85;">'
         f'{len(papers)} new papers selected from {total_found} candidates</p>'
         '</div>'
-        + cards_html +
+        + toc_html + cards_html +
         '<div style="margin-top:28px;padding:16px 20px;background:#e2e8f0;border-radius:8px;text-align:center;">'
         '<p style="margin:0;font-size:12px;color:#64748b;">'
         'Generated by Prosocial Research Radar &nbsp;&middot;&nbsp; Sources: PubMed + OpenAlex '
