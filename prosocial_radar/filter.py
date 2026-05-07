@@ -142,7 +142,7 @@ def _classify_topic(paper: Dict, text: str) -> Dict[str, object]:
         if soft_exclude:
             reason += "; caution signal: " + _join(soft_exclude, 3)
         if hard_exclude:
-            reason += "; hard-exclude signal overridden by title anchor: " + _join(hard_exclude, 3)
+            reason += "; hard-exclude signal retained as scoring penalty because title anchor matched: " + _join(hard_exclude, 3)
     elif hard_exclude:
         tier = "exclude"
         reason = (
