@@ -7,6 +7,7 @@ Computes a relevance_score (0-100) for each paper based on:
   - Recency bonus (papers <=3 years old)                   -> up to 18 pts
   - Topic breadth bonus (multiple tags hit)                -> up to 6 pts
   - Target-journal quality badge                           -> up to 4 pts
+  - Research-profile alignment                             -> up to +24 pts
   - Adjacent/noisy-topic penalty                           -> up to -24 pts
 """
 
