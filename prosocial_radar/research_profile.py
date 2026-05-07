@@ -15,7 +15,7 @@ from typing import Dict, Iterable, List, Tuple
 TAG_RULES: list[tuple[str, float, list[str]]] = [
     (
         "aging_prosociality",
-        7.0,
+        10.0,
         [
             r"\bolder adults?\b",
             r"\baging\b",
@@ -377,7 +377,7 @@ def annotate_research_profile(paper: Dict) -> Dict:
             tags.append("psychology_priority")
 
     penalty = _peripheral_penalty(paper, tags, text)
-    adjustment = round(min(raw_score * 0.55, 18.0) - penalty, 1)
+    adjustment = round(min(raw_score * 0.75, 24.0) - penalty, 1)
 
     paper["research_use_tags"] = _join(tags)
     paper["research_alignment_score"] = round(raw_score, 1)
