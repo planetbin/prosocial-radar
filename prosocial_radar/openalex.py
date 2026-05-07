@@ -265,7 +265,8 @@ def _normalise_work(item: Dict, query_name: str, sort: str, rank: int) -> Dict:
 
 
 def _source_filter() -> str:
-    since = date.today() - timedelta(days=int(config.MAX_AGE_DAYS))
+    source_days = max(int(getattr(config, "OPENALEX_SOURCE_RECENT_DAYS", config.RECENT_DAYS)), 1)
+    since = date.today() - timedelta(days=source_days)
     parts = [
         f"from_publication_date:{since.isoformat()}",
         f"to_publication_date:{date.today().isoformat()}",
