@@ -112,6 +112,10 @@ OA_EMAIL = _env_str("OPENALEX_EMAIL", str(_get("openalex.polite_pool_email", "re
 OA_BATCH = _env_int("OPENALEX_BATCH", _get("openalex.batch_size", 50))
 OPENALEX_SOURCE_MAX_RESULTS = _env_int("OPENALEX_SOURCE_MAX_RESULTS", _get("openalex.source_max_results", 80))
 OPENALEX_SOURCE_BATCH = _env_int("OPENALEX_SOURCE_BATCH", _get("openalex.source_batch_size", 50))
+OPENALEX_SOURCE_RECENT_DAYS = _env_int(
+    "OPENALEX_SOURCE_RECENT_DAYS",
+    _get("openalex.recent_days", RECENT_DAYS),
+)
 OPENALEX_SOURCE_SEARCHES = _as_dict_list(_get("openalex.searches", []))
 OPENALEX_SOURCE_SORTS = _as_list(_get("openalex.source_sorts"), ["relevance_score:desc", "publication_date:desc"])
 
