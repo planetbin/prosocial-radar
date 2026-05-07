@@ -44,8 +44,19 @@ def _save(history: Dict) -> None:
         json.dump(history, fh, ensure_ascii=False, indent=2)
 
 
+def _source_ids(paper: Dict) -> List[str]:
+    values = [paper.get("source_id"), paper.get("openalex_id")]
+    seen: List[str] = []
+    for value in values:
+        text = str(value or "").strip()
+        if text and text not in seen:
+            seen.append(text)
+    return seen
+
+
 def _source_id(paper: Dict) -> str:
-    return str(paper.get("source_id") or paper.get("openalex_id") or "").strip()
+    source_ids = _source_ids(paper)
+    return source_ids[0] if source_ids else ""
 
 
 def get_sent_ids() -> tuple[Set[str], Set[str], Set[str]]:
@@ -61,12 +72,12 @@ def filter_new_papers(papers: List[Dict]) -> List[Dict]:
     for p in papers:
         pmid = p.get("pmid") or ""
         doi = (p.get("doi") or "").lower().strip()
-        source_id = _source_id(p)
+        source_ids = _source_ids(p)
         if pmid and pmid in sent_pmids:
             continue
         if doi and doi in sent_dois:
             continue
-        if source_id and source_id in sent_source_ids:
+        if any(source_id in sent_source_ids for source_id in source_ids):
             continue
         new.append(p)
 
@@ -92,15 +103,16 @@ def mark_as_sent(papers: List[Dict]) -> None:
     for p in papers:
         pmid = p.get("pmid") or ""
         doi = (p.get("doi") or "").lower().strip()
-        source_id = _source_id(p)
+        source_ids = _source_ids(p)
         if pmid:
             sent_pmids.add(pmid)
             new_pmids.append(pmid)
         if doi:
             sent_dois.add(doi)
-        if source_id:
+        for source_id in source_ids:
             sent_source_ids.add(source_id)
-            new_source_ids.append(source_id)
+            if source_id not in new_source_ids:
+                new_source_ids.append(source_id)
 
     h["sent_pmids"] = sorted(sent_pmids)
     h["sent_dois"] = sorted(sent_dois)
