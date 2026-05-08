@@ -1,0 +1,91 @@
+name: Radar Branch Email Preview
+
+on:
+  push:
+    branches:
+      - codex/research-efficiency-20260507
+    paths:
+      - ".github/radar-triggers/research_efficiency_preview.txt"
+
+concurrency:
+  group: radar-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: write
+      issues: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run radar without email
+        env:
+          DEEPSEEK_API_KEY:   ${{ secrets.DEEPSEEK_API_KEY }}
+          ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN:       ${{ github.token }}
+        run: python run_radar.py --top 20 --no-push --out-dir preview_outputs
+
+      - name: Render top 20 HTML preview
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from prosocial_radar.push import render_email
+
+          out_dir = Path("preview_outputs")
+          new_files = sorted(out_dir.glob("new_papers_*.json"))
+          report_files = sorted(out_dir.glob("run_report_*.json"))
+          if not new_files:
+              raise SystemExit("No new_papers JSON was generated")
+
+          papers = json.loads(new_files[-1].read_text(encoding="utf-8"))[:20]
+          report = json.loads(report_files[-1].read_text(encoding="utf-8")) if report_files else {}
+          total_found = int((report.get("stages") or {}).get("after_filter") or len(papers))
+          html = render_email(papers, total_found=total_found, feedback_status=report.get("feedback"))
+
+          preview_dir = Path("preview")
+          preview_dir.mkdir(exist_ok=True)
+          (preview_dir / "email_preview_top20.html").write_text(html, encoding="utf-8")
+
+          summary = {
+              "paper_count": len(papers),
+              "total_after_filter": total_found,
+              "score_range": (report.get("stages") or {}).get("top8_score_range", {}),
+              "tier_distribution": (report.get("stages") or {}).get("tier_distribution", {}),
+              "titles": [p.get("title", "") for p in papers],
+          }
+          (preview_dir / "email_preview_top20_summary.json").write_text(
+              json.dumps(summary, ensure_ascii=False, indent=2),
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Commit preview only
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add preview/email_preview_top20.html preview/email_preview_top20_summary.json
+          if git diff --staged --quiet; then
+            echo "No preview changes to commit."
+          else
+            git commit -m "test: render top20 email preview"
+            git push
+          fi
