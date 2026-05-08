@@ -91,6 +91,13 @@ FEEDBACK_BUTTONS = [
     ("ignore", "Ignore", "#991b1b", "#fee2e2"),
 ]
 
+FEEDBACK_LABELS = {
+    "must_read": "Must read",
+    "useful": "Useful",
+    "maybe": "Maybe",
+    "ignore": "Ignore",
+}
+
 
 def _badge(text: str, color: str, bg_alpha: str = "18") -> str:
     safe_text = html.escape(text or "other")
@@ -292,16 +299,26 @@ def _paper_card(rank: int, p: Dict) -> str:
         f'Read paper &#8594;</a>'
     ) if link else ""
 
-    structured_html = "".join([
-        _detail("Question", p.get("ai_research_question", "")),
+    primary_html = "".join([
+        _detail("Result", p.get("ai_main_result", "") or ai_finding),
         _detail("Sample", p.get("ai_sample", "")),
         _detail("Design", p.get("ai_design", "")),
-        _detail("Measures", p.get("ai_measures", "")),
-        _detail("Result", p.get("ai_main_result", "") or ai_finding),
-        _detail("Limitations", p.get("ai_limitations", "")),
+        _detail("Question", p.get("ai_research_question", "")),
         _detail("Why it matters", p.get("ai_why_it_matters", "")),
+    ])
+    secondary_html = "".join([
+        _detail("Measures", p.get("ai_measures", "")),
+        _detail("Limitations", p.get("ai_limitations", "")),
         _detail("Keywords", p.get("ai_bibtex_keywords", "")),
     ])
+    if secondary_html:
+        secondary_html = (
+            '<details style="margin-top:6px;">'
+            '<summary style="font-size:11px;color:#64748b;cursor:pointer;font-weight:700;">More structured details</summary>'
+            f'{secondary_html}'
+            '</details>'
+        )
+    structured_html = primary_html + secondary_html
 
     ai_block = ""
     if ai_summary or structured_html:
@@ -370,7 +387,54 @@ def _toc_html(section_entries: List[tuple[str, int]]) -> str:
     )
 
 
-def render_email(papers: List[Dict], total_found: int) -> str:
+def _feedback_status_html(feedback_status: Dict | None) -> str:
+    if not feedback_status:
+        return ""
+    total = feedback_status.get("count")
+    distribution = feedback_status.get("distribution") or {}
+    if total in (None, "") and not distribution:
+        return ""
+
+    chips = []
+    for rating, label, color, background in FEEDBACK_BUTTONS:
+        count = int(distribution.get(rating) or 0)
+        if count <= 0:
+            continue
+        chips.append(
+            f'<span style="display:inline-block;margin:4px 6px 0 0;padding:5px 8px;'
+            f'border-radius:5px;background:{background};color:{color};font-size:11px;'
+            f'font-weight:800;">{html.escape(label)} {count}</span>'
+        )
+
+    synced = bool(feedback_status.get("synced"))
+    enabled = bool(feedback_status.get("enabled"))
+    title = "Feedback learning"
+    if synced:
+        status = "GitHub feedback synced for this run"
+    elif enabled:
+        status = "GitHub feedback sync attempted"
+    else:
+        status = "GitHub feedback sync not available in this run"
+
+    pieces = [status]
+    if total not in (None, ""):
+        pieces.append(f"{int(total)} stored signal(s)")
+    if feedback_status.get("issues_imported") not in (None, ""):
+        pieces.append(f"{int(feedback_status.get('issues_imported') or 0)} issue(s) imported")
+    reason = feedback_status.get("reason") or feedback_status.get("error")
+    if reason:
+        pieces.append(_shorten(str(reason), 120))
+
+    return (
+        '<div style="margin:0 0 18px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">'
+        f'<p style="margin:0;font-size:12px;color:#0f172a;font-weight:800;">{html.escape(title)}</p>'
+        f'<p style="margin:4px 0 0;font-size:12px;line-height:1.4;color:#64748b;">{html.escape("; ".join(pieces))}</p>'
+        f'{"".join(chips)}'
+        '</div>'
+    )
+
+
+def render_email(papers: List[Dict], total_found: int, feedback_status: Dict | None = None) -> str:
     def section_html(section_key: str, ranked: List[tuple[int, Dict]]) -> str:
         if not ranked:
             return ""
@@ -404,6 +468,7 @@ def render_email(papers: List[Dict], total_found: int) -> str:
     section_entries.extend((key, len(grouped[key])) for key in SECTION_ORDER if grouped[key])
 
     today = date.today().strftime("%B %d, %Y")
+    feedback_html = _feedback_status_html(feedback_status)
     toc_html = _toc_html(section_entries)
     cards_html = section_html("top", top) + "".join(section_html(key, grouped[key]) for key in SECTION_ORDER)
 
@@ -422,7 +487,7 @@ def render_email(papers: List[Dict], total_found: int) -> str:
         f'<p style="margin:0;font-size:14px;opacity:.85;">'
         f'{len(papers)} new papers selected from {total_found} candidates</p>'
         '</div>'
-        + toc_html + cards_html +
+        + feedback_html + toc_html + cards_html +
         '<div style="margin-top:28px;padding:16px 20px;background:#e2e8f0;border-radius:8px;text-align:center;">'
         '<p style="margin:0;font-size:12px;color:#64748b;">'
         'Generated by Prosocial Research Radar &nbsp;&middot;&nbsp; Sources: PubMed + OpenAlex '
@@ -479,7 +544,7 @@ def _send_smtp(subject: str, html_body: str) -> bool:
         return False
 
 
-def send_email(papers: List[Dict], total_found: int) -> bool:
+def send_email(papers: List[Dict], total_found: int, feedback_status: Dict | None = None) -> bool:
     """Send the digest email. Returns True on success."""
     if not papers:
         log.info("No new papers - skipping email.")
@@ -490,7 +555,7 @@ def send_email(papers: List[Dict], total_found: int) -> bool:
 
     today = date.today().strftime("%Y-%m-%d")
     subject = f"Prosocial Research Radar - {today} | {len(papers)} new papers"
-    html_body = render_email(papers, total_found)
+    html_body = render_email(papers, total_found, feedback_status=feedback_status)
 
     log.info("Sending digest to [%s] (%d papers) ...", ", ".join(RECIPIENTS), len(papers))
 
