@@ -73,6 +73,74 @@ def _env_list(name: str, default: Iterable[str]) -> list[str]:
     return [item.strip() for item in value.replace(";", ",").split(",") if item.strip()]
 
 
+DEFAULT_OPENALEX_SOURCE_SEARCHES = [
+    {
+        "name": "prosocial_core_and_decision",
+        "query": "prosocial behavior altruism helping sharing generosity social decision making social preference",
+    },
+    {
+        "name": "aging_and_attention",
+        "query": "older adults aging prosocial behavior helping sharing attention gaze eye-tracking neural",
+    },
+    {
+        "name": "computational_value_based",
+        "query": "computational model reinforcement learning drift diffusion Bayesian utility model prosocial altruism",
+    },
+    {
+        "name": "measurement_and_empathy",
+        "query": "empathy compassion prosocial measurement scale validation psychometric picture vignette",
+    },
+    {
+        "name": "developmental_cooperation",
+        "query": "children adolescents cooperation dictator game trust game prosocial development",
+    },
+]
+
+
+def _optimised_openalex_searches(searches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not searches:
+        return DEFAULT_OPENALEX_SOURCE_SEARCHES
+    names = {str(search.get("name") or "").strip() for search in searches}
+    legacy_default_names = {
+        "core_prosocial",
+        "social_decision",
+        "economic_games",
+        "developmental_prosocial",
+        "empathy_moral",
+        "cooperation_human",
+        "social_neuroscience",
+        "oxytocin_biology",
+        "computational_modeling_core",
+        "computational_social_decision",
+        "reinforcement_learning",
+        "decision_models",
+        "aging_prosociality",
+        "age_helping_neural",
+        "measurement_prosociality",
+        "cost_familiarity_prosocial",
+    }
+    if legacy_default_names & names:
+        return DEFAULT_OPENALEX_SOURCE_SEARCHES
+    return searches
+
+
+def _refine_topic_exclude_terms(terms: Iterable[str], hard: bool = False) -> list[str]:
+    refined: list[str] = []
+    rat_context = r"\brat\s+(model|sample|study|studies|experiment|experiments|behavior|behaviour)\b"
+    for term in terms:
+        text = str(term or "").strip()
+        if not text:
+            continue
+        normalised = text.replace("\\\\", "\\")
+        if hard and normalised == r"\bai\b":
+            continue
+        if normalised == r"\brat\b":
+            text = rat_context
+        if text not in refined:
+            refined.append(text)
+    return refined
+
+
 # PubMed API
 PUBMED_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 PUBMED_SEARCH = f"{PUBMED_BASE}/esearch.fcgi"
@@ -116,7 +184,7 @@ OPENALEX_SOURCE_RECENT_DAYS = _env_int(
     "OPENALEX_SOURCE_RECENT_DAYS",
     _get("openalex.recent_days", RECENT_DAYS),
 )
-OPENALEX_SOURCE_SEARCHES = _as_dict_list(_get("openalex.searches", []))
+OPENALEX_SOURCE_SEARCHES = _optimised_openalex_searches(_as_dict_list(_get("openalex.searches", [])))
 OPENALEX_SOURCE_SORTS = _as_list(_get("openalex.source_sorts"), ["relevance_score:desc", "publication_date:desc"])
 
 # Delivery
@@ -176,5 +244,11 @@ TOPIC_CORE_TERMS = _as_list(_get("filters.topic_relevance.core_terms"), [])
 TOPIC_PARADIGM_TERMS = _as_list(_get("filters.topic_relevance.paradigm_terms"), [])
 TOPIC_MECHANISM_TERMS = _as_list(_get("filters.topic_relevance.mechanism_terms"), [])
 TOPIC_CONTEXT_TERMS = _as_list(_get("filters.topic_relevance.context_terms"), [])
-TOPIC_SOFT_EXCLUDE_TERMS = _as_list(_get("filters.topic_relevance.soft_exclude_terms"), [])
-TOPIC_HARD_EXCLUDE_TERMS = _as_list(_get("filters.topic_relevance.hard_exclude_terms"), [])
+TOPIC_SOFT_EXCLUDE_TERMS = _refine_topic_exclude_terms(
+    _as_list(_get("filters.topic_relevance.soft_exclude_terms"), []),
+    hard=False,
+)
+TOPIC_HARD_EXCLUDE_TERMS = _refine_topic_exclude_terms(
+    _as_list(_get("filters.topic_relevance.hard_exclude_terms"), []),
+    hard=True,
+)
