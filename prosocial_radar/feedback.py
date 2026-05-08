@@ -81,6 +81,7 @@ def feedback_issue_url(paper: Dict, rating: str) -> str:
     journal = str(paper.get("journal") or "").strip()
     tags = str(paper.get("topic_tags") or "").strip()
     research_tags = str(paper.get("research_use_tags") or "").strip()
+    email_section = str(paper.get("email_section") or "").strip()
     score = str(paper.get("relevance_score") or "").strip()
 
     key_label = pmid or doi or source_id or "none"
@@ -96,6 +97,7 @@ def feedback_issue_url(paper: Dict, rating: str) -> str:
         f"journal: {journal}",
         f"topic_tags: {tags}",
         f"research_use_tags: {research_tags}",
+        f"email_section: {email_section}",
         f"score: {score}",
         "",
         "Notes:",
@@ -117,7 +119,19 @@ def attach_feedback_links(papers: Iterable[Dict]) -> None:
 
 def _parse_feedback_body(body: str) -> Dict[str, str]:
     fields: Dict[str, str] = {}
-    allowed = {"rating", "pmid", "doi", "source", "source_id", "title", "journal", "topic_tags", "research_use_tags", "score"}
+    allowed = {
+        "rating",
+        "pmid",
+        "doi",
+        "source",
+        "source_id",
+        "title",
+        "journal",
+        "topic_tags",
+        "research_use_tags",
+        "email_section",
+        "score",
+    }
     for line in (body or "").splitlines():
         if ":" not in line:
             continue
@@ -158,6 +172,7 @@ def _issue_to_feedback(issue: Dict) -> Dict | None:
         "journal": fields.get("journal", ""),
         "topic_tags": fields.get("topic_tags", ""),
         "research_use_tags": fields.get("research_use_tags", ""),
+        "email_section": fields.get("email_section", ""),
         "score": fields.get("score", ""),
         "issue_number": issue.get("number"),
         "issue_url": issue.get("html_url"),
@@ -165,12 +180,27 @@ def _issue_to_feedback(issue: Dict) -> Dict | None:
     }
 
 
+def _rating_distribution(feedback: Dict[str, Dict]) -> Dict[str, int]:
+    distribution = {rating: 0 for rating in RATINGS}
+    for item in feedback.values():
+        rating = str(item.get("rating") or "").strip().lower()
+        if rating in distribution:
+            distribution[rating] += 1
+    return distribution
+
+
 def sync_feedback_from_github() -> Dict:
     """Pull radar-feedback issues into data/feedback.json when running in GitHub Actions."""
     repo = _repo_full_name()
     token = os.environ.get("GITHUB_TOKEN", "").strip()
+    current_feedback = load_feedback()
     if not token:
-        return {"enabled": False, "reason": "GITHUB_TOKEN not set", "count": len(load_feedback())}
+        return {
+            "enabled": False,
+            "reason": "GITHUB_TOKEN not set",
+            "count": len(current_feedback),
+            "distribution": _rating_distribution(current_feedback),
+        }
 
     headers = {
         "Accept": "application/vnd.github+json",
@@ -186,7 +216,14 @@ def sync_feedback_from_github() -> Dict:
         issues = response.json()
     except Exception as exc:
         log.warning("Could not sync GitHub feedback issues: %s", exc)
-        return {"enabled": True, "synced": False, "error": str(exc), "count": len(load_feedback())}
+        current_feedback = load_feedback()
+        return {
+            "enabled": True,
+            "synced": False,
+            "error": str(exc),
+            "count": len(current_feedback),
+            "distribution": _rating_distribution(current_feedback),
+        }
 
     feedback = load_feedback()
     imported = 0
@@ -200,8 +237,15 @@ def sync_feedback_from_github() -> Dict:
             imported += 1
 
     save_feedback(feedback)
+    distribution = _rating_distribution(feedback)
     log.info("Feedback sync complete: %d issue(s), %d stored entries", imported, len(feedback))
-    return {"enabled": True, "synced": True, "issues_imported": imported, "count": len(feedback)}
+    return {
+        "enabled": True,
+        "synced": True,
+        "issues_imported": imported,
+        "count": len(feedback),
+        "distribution": distribution,
+    }
 
 
 def _tags(value: str) -> set[str]:
@@ -216,6 +260,7 @@ def _similarity_adjustment(paper: Dict, feedback: Dict[str, Dict]) -> tuple[floa
     paper_journal = (paper.get("journal") or "").lower().strip()
     paper_tags = _tags(paper.get("topic_tags") or "")
     paper_research_tags = _tags(paper.get("research_use_tags") or "")
+    paper_section = (paper.get("email_section") or "").lower().strip()
     adjustment = 0.0
     reasons: List[str] = []
 
@@ -226,7 +271,10 @@ def _similarity_adjustment(paper: Dict, feedback: Dict[str, Dict]) -> tuple[floa
         item_journal = (item.get("journal") or "").lower().strip()
         item_tags = _tags(item.get("topic_tags") or "")
         item_research_tags = _tags(item.get("research_use_tags") or "")
+        item_section = (item.get("email_section") or "").lower().strip()
         if item_journal and paper_journal and item_journal == paper_journal:
+            adjustment += 2.0
+        if item_section and paper_section and item_section == paper_section:
             adjustment += 2.0
         shared = paper_tags & item_tags
         if shared:
@@ -239,8 +287,11 @@ def _similarity_adjustment(paper: Dict, feedback: Dict[str, Dict]) -> tuple[floa
         item_journal = (item.get("journal") or "").lower().strip()
         item_tags = _tags(item.get("topic_tags") or "")
         item_research_tags = _tags(item.get("research_use_tags") or "")
+        item_section = (item.get("email_section") or "").lower().strip()
         if item_journal and paper_journal and item_journal == paper_journal:
             adjustment -= 3.0
+        if item_section and paper_section and item_section == paper_section:
+            adjustment -= 4.0
         shared = paper_tags & item_tags
         if shared:
             adjustment -= min(len(shared) * 2.0, 6.0)
