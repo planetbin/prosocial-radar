@@ -109,6 +109,26 @@ def _finish_report(report: dict, out_dir: Path, status: str, error: str | None =
     return save_run_report(report, out_dir)
 
 
+def _tier_distribution(candidate_audit) -> dict:
+    distribution = {}
+    for paper in candidate_audit:
+        tier = str(paper.get("topic_tier") or paper.get("filter_decision") or "unknown").strip() or "unknown"
+        distribution[tier] = distribution.get(tier, 0) + 1
+    return dict(sorted(distribution.items(), key=lambda item: item[0]))
+
+
+def _score_range(papers) -> dict:
+    scores = [float(p.get("relevance_score")) for p in papers if isinstance(p.get("relevance_score"), (int, float))]
+    if not scores:
+        return {"count": 0, "min": None, "max": None, "mean": None}
+    return {
+        "count": len(scores),
+        "min": round(min(scores), 1),
+        "max": round(max(scores), 1),
+        "mean": round(sum(scores) / len(scores), 1),
+    }
+
+
 def _mark_new_status(papers, new_papers):
     new_ids = {_new_identity(p) for p in new_papers if _new_identity(p)}
     for p in papers:
@@ -184,6 +204,7 @@ def main():
     report["stages"]["unique_after_dedup"] = len(candidate_audit)
     report["stages"]["after_filter"] = len(papers)
     report["stages"]["filtered_out"] = len(candidate_audit) - len(papers)
+    report["stages"]["tier_distribution"] = _tier_distribution(candidate_audit)
     total_after_filter = len(papers)
 
     if not args.no_score:
@@ -214,6 +235,10 @@ def main():
 
     attach_feedback_links(candidate_audit)
     top_new = new_papers[:args.top]
+    report["stages"]["top8_score_range"] = {
+        "requested_top": args.top,
+        **_score_range(top_new),
+    }
 
     all_csv = save_csv(candidate_audit, out_dir, prefix="all_candidates")
     all_json = save_json(candidate_audit, out_dir, prefix="all_candidates")
@@ -236,7 +261,7 @@ def main():
         log.info("  %s -> %s", key, value)
 
     if not args.no_push:
-        sent = send_email(top_new, total_found=total_after_filter)
+        sent = send_email(top_new, total_found=total_after_filter, feedback_status=report.get("feedback"))
         report["email"] = {
             "attempted": bool(top_new),
             "sent": bool(sent),
