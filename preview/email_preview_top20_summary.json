@@ -1,0 +1,39 @@
+{
+  "paper_count": 20,
+  "total_after_filter": 257,
+  "score_range": {
+    "requested_top": 20,
+    "count": 20,
+    "min": 81.6,
+    "max": 91.0,
+    "mean": 84.0
+  },
+  "tier_distribution": {
+    "adjacent": 116,
+    "core": 99,
+    "exclude": 59,
+    "mechanism_linked": 158
+  },
+  "titles": [
+    "From stigma to support: the mediating role of sympathy between nurses' perceived stigma and helping behavior tendency for alcohol use disorder.",
+    "Acute stress reduces effortful prosocial behaviour.",
+    "A study of the prosocial behavior of middle-aged and elderly sports club members: a network analysis.",
+    "Face Culture and Prosocial Value Conflict: A Developmental Investigation of Children's White Lie Decisions Between Emotional Comfort and Long-Term Goals.",
+    "Empathy incites a stable prosocial decision bias.",
+    "Pro-environmental and Prosocial Decisions Share Neural Correlates.",
+    "Social class and prosociality: A meta-analytic review.",
+    "Friendship status and recipient's emotions both affect children's sharing behavior.",
+    "Endogenous opioid receptor system mediates costly altruism in the human brain.",
+    "Intracortical functional connectivity during deep sleep reveals prosocial preferences.",
+    "Children consider others' need and reputation in costly sharing decisions.",
+    "Multimodal Imaging to Identify Brain Markers of Human Prosocial Behavior.",
+    "Donation After Circulatory Death in Pediatric Heart Transplantation.",
+    "Neurocognitive effects of interest on reward valuation and effort investment in boring contexts.",
+    "Iranian community-dwelling older adults' perceptions of prosociality: A qualitative study.",
+    "Measuring early adolescents' prosocial behavior toward diverse others: Considering multiple social identities.",
+    "Impact of the gut microbiome composition on social decision-making.",
+    "Helping infants to help: Cultural variation in maternal scaffolding and the development of prosocial behavior.",
+    "The Impact of Red Songs and Music Training Experience on Implicit Prosocial Attitudes: Evidence from the SC-IAT Paradigm and Event-Related Potentials.",
+    "Age differences in prosociality across the adult lifespan: A meta-analysis."
+  ]
+}
