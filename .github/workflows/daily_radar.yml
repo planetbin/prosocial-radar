@@ -87,7 +87,7 @@ jobs:
           path: |
             outputs/all_candidates_*.csv
             outputs/all_candidates_*.json
-          retention-days: 14
+          retention-days: 1
           if-no-files-found: ignore
 
       - name: Commit history and compact outputs
