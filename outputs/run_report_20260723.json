@@ -1,0 +1,74 @@
+{
+  "started_at_utc": "2026-07-23T02:57:13+00:00",
+  "finished_at_utc": "2026-07-23T02:59:49+00:00",
+  "status": "ok",
+  "profile": {
+    "name": "default",
+    "path": "/home/runner/work/prosocial-radar/prosocial-radar/profiles/default.yml"
+  },
+  "parameters": {
+    "max_per_channel": 200,
+    "top": 8,
+    "sources": [
+      "pubmed",
+      "openalex"
+    ],
+    "no_openalex": false,
+    "no_filter": false,
+    "no_score": false,
+    "no_ai": false,
+    "no_push": false
+  },
+  "stages": {
+    "source_fetch": {
+      "enabled": [
+        "pubmed",
+        "openalex"
+      ],
+      "counts": {
+        "pubmed_pmids": 405,
+        "pubmed_details": 405,
+        "openalex_details": 834,
+        "raw_total": 1239
+      },
+      "errors": []
+    },
+    "raw_candidates": 1239,
+    "openalex_enriched": 1193,
+    "before_filter": 1239,
+    "unique_after_dedup": 1204,
+    "after_filter": 602,
+    "filtered_out": 602,
+    "scored": 602,
+    "feedback_adjusted": 0,
+    "new_after_history": 249,
+    "already_seen_after_history": 353
+  },
+  "summaries": {
+    "attempted": 8,
+    "with_summary": 8,
+    "skipped_no_ai_flag": false
+  },
+  "outputs": {
+    "all_candidates_csv": "outputs/all_candidates_20260723.csv",
+    "all_candidates_json": "outputs/all_candidates_20260723.json",
+    "all_candidates_policy": "GitHub Actions artifact only; not committed back to the repository",
+    "new_papers_csv": "outputs/new_papers_20260723.csv",
+    "new_papers_json": "outputs/new_papers_20260723.json",
+    "run_report_json": "outputs/run_report_20260723.json"
+  },
+  "email": {
+    "attempted": true,
+    "sent": true,
+    "paper_count": 8,
+    "recipient_count": 1,
+    "includes_feedback_links": true
+  },
+  "feedback": {
+    "enabled": true,
+    "synced": true,
+    "issues_imported": 0,
+    "count": 0
+  },
+  "errors": []
+}
