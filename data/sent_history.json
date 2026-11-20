@@ -1063,7 +1063,8 @@
     "43041540",
     "43043954",
     "43048548",
-    "43052156"
+    "43052156",
+    "43052979"
   ],
   "sent_dois": [
     "10.1001/jamanetworkopen.2023.46789",
@@ -1257,6 +1258,7 @@
     "10.1016/j.chaos.2026.119204",
     "10.1016/j.chb.2024.108156",
     "10.1016/j.chb.2026.109155",
+    "10.1016/j.chbr.2025.100836",
     "10.1016/j.chbr.2025.100877",
     "10.1016/j.chbr.2026.101180",
     "10.1016/j.chbr.2026.101448",
@@ -1854,6 +1856,7 @@
     "10.1111/jcpp.70225",
     "10.1111/jcpp.70234",
     "10.1111/jgs.70840",
+    "10.1111/joop.70173",
     "10.1111/jopy.12773",
     "10.1111/jopy.12896",
     "10.1111/jopy.12957",
@@ -1989,6 +1992,7 @@
     "10.1186/s12912-026-05441-x",
     "10.1186/s12913-026-15011-1",
     "10.1186/s12913-026-15114-9",
+    "10.1186/s12915-026-02694-5",
     "10.1186/s12919-026-00396-y",
     "10.1186/s12955-025-02341-7",
     "10.1186/s12962-026-00822-0",
@@ -2108,6 +2112,7 @@
     "10.18502/ijps.v19i1.14350",
     "10.19055/ams.2026.05/29/12",
     "10.19191/ep26.3.a1017.058",
+    "10.1920/wp.ifs.2026.6726",
     "10.20414/altazkiah.v13i1.9407",
     "10.20885/jielariba.vol11.iss2.art25",
     "10.20944/preprints202407.0952.v1",
@@ -2176,10 +2181,12 @@
     "10.31234/osf.io/na9vz",
     "10.31234/osf.io/pafuw_v1",
     "10.31234/osf.io/qdhka",
+    "10.31234/osf.io/r4wc5_v2",
     "10.31234/osf.io/u5kq8",
     "10.31234/osf.io/uhgmd",
     "10.31234/osf.io/utnxf_v1",
     "10.31234/osf.io/wd45j_v1",
+    "10.31234/osf.io/xdwpq_v4",
     "10.31234/osf.io/yz3a8",
     "10.31235/osf.io/42hxd_v1",
     "10.31557/apjcp.2026.27.7.2363",
@@ -2500,6 +2507,7 @@
     "10.55121/jbep.v2i1.102407",
     "10.55306/grjssm.2024.2205",
     "10.55329/mjpc6260",
+    "10.55737/qjss.vi-iii.25404",
     "10.55927/fjmr.v4i3.104",
     "10.56201/ijbfr.vol.12.no8.2026.pg32.44",
     "10.56201/ijssmr.vol.12no3.2026.pg682.695",
@@ -3436,6 +3444,7 @@
     "43043954",
     "43048548",
     "43052156",
+    "43052979",
     "https://openalex.org/W2413338692",
     "https://openalex.org/W2597005112",
     "https://openalex.org/W2754283588",
@@ -3663,6 +3672,7 @@
     "https://openalex.org/W4407419850",
     "https://openalex.org/W4407668245",
     "https://openalex.org/W4407803652",
+    "https://openalex.org/W4407922760",
     "https://openalex.org/W4407980957",
     "https://openalex.org/W4408067586",
     "https://openalex.org/W4408196948",
@@ -3724,6 +3734,7 @@
     "https://openalex.org/W4412688250",
     "https://openalex.org/W4412774234",
     "https://openalex.org/W4412784471",
+    "https://openalex.org/W4412798293",
     "https://openalex.org/W4412853744",
     "https://openalex.org/W4412971318",
     "https://openalex.org/W4412979204",
@@ -3737,6 +3748,7 @@
     "https://openalex.org/W4413869387",
     "https://openalex.org/W4413888256",
     "https://openalex.org/W4414131390",
+    "https://openalex.org/W4414216778",
     "https://openalex.org/W4414309037",
     "https://openalex.org/W4414578699",
     "https://openalex.org/W4414629459",
@@ -3756,6 +3768,7 @@
     "https://openalex.org/W4416271829",
     "https://openalex.org/W4416407758",
     "https://openalex.org/W4416451397",
+    "https://openalex.org/W4416522003",
     "https://openalex.org/W4416723911",
     "https://openalex.org/W4416775803",
     "https://openalex.org/W4416844925",
@@ -4147,7 +4160,10 @@
     "https://openalex.org/W7225987530",
     "https://openalex.org/W7226025105",
     "https://openalex.org/W7233643692",
-    "https://openalex.org/W7234851932"
+    "https://openalex.org/W7234851932",
+    "https://openalex.org/W7235691169",
+    "https://openalex.org/W7235717295",
+    "https://openalex.org/W7235812194"
   ],
   "log": [
     {
@@ -8327,6 +8343,23 @@
         "43052156",
         "43025872",
         "43048548"
+      ],
+      "count": 8
+    },
+    {
+      "date": "2026-11-20",
+      "pmids": [
+        "43052979"
+      ],
+      "source_ids": [
+        "https://openalex.org/W4416522003",
+        "https://openalex.org/W4412798293",
+        "43052979",
+        "https://openalex.org/W7235812194",
+        "https://openalex.org/W7235691169",
+        "https://openalex.org/W4414216778",
+        "https://openalex.org/W7235717295",
+        "https://openalex.org/W4407922760"
       ],
       "count": 8
     }
